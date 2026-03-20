@@ -37,6 +37,24 @@ body.ready .star-hero {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  transition: transform 320ms cubic-bezier(0.22, 0.9, 0.25, 1.1);
+  will-change: opacity, transform;
+}
+
+html.nav-enter-left #app {
+  transform: translateX(40px);
+}
+
+html.nav-enter-right #app {
+  transform: translateX(-40px);
+}
+
+html.nav-leave-left #app {
+  transform: translateX(-40px);
+}
+
+html.nav-leave-right #app {
+  transform: translateX(40px);
 }
 
 #pageStack {
@@ -44,6 +62,40 @@ body.ready .star-hero {
   overflow-y: auto;
   scroll-snap-type: y proximity;
   scroll-behavior: smooth;
+}
+
+.page-transition {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(255, 245, 232, 0.8), rgba(15, 20, 45, 0.85));
+  opacity: 0;
+  pointer-events: none;
+  z-index: 999;
+  transition: opacity 0.35s cubic-bezier(0.22, 0.9, 0.25, 1.1);
+}
+
+.page-transition-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 240, 210, 0.55), transparent 60%);
+  mix-blend-mode: screen;
+  animation: transitionGlow 0.6s ease-in-out infinite alternate;
+}
+
+.page-transition.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@keyframes transitionGlow {
+  from {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
 }
 
 #pageStack.hidden {
@@ -54,6 +106,24 @@ body.ready .star-hero {
 
 .snap-section {
   scroll-snap-align: start;
+}
+
+#pageStack {
+  animation: pageEnter 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pageEnter {
+  0% {
+    transform: translateY(10px);
+    opacity: 0.6;
+  }
+  60% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 
 .topbar {
@@ -79,6 +149,7 @@ body.ready .star-hero {
 .nav {
   display: flex;
   gap: 16px;
+  position: relative;
 }
 
 .nav a {
@@ -87,25 +158,27 @@ body.ready .star-hero {
   font-size: 14px;
   position: relative;
   padding-bottom: 2px;
+  transition: color 0.2s ease;
 }
 
 .nav a:hover {
   color: var(--accent);
 }
 
-.nav a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -4px;
-  width: 0;
-  height: 2px;
-  background: linear-gradient(120deg, var(--accent), var(--accent-2));
-  transition: width 180ms ease;
+.nav a.nav-active {
+  color: var(--accent);
 }
 
-.nav a:hover::after {
-  width: 100%;
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  border-radius: 999px;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.22, 0.9, 0.25, 1.1), width 0.35s ease;
 }
 
 .bottom-nav {
@@ -115,7 +188,7 @@ body.ready .star-hero {
   bottom: 14px;
   z-index: 50;
   display: none;
-  justify-content: space-around;
+  justify-content: flex-start;
   gap: 8px;
   padding: 10px 12px;
   border-radius: 18px;
@@ -123,6 +196,9 @@ body.ready .star-hero {
   border: 1px solid rgba(221, 205, 188, 0.7);
   box-shadow: 0 10px 26px rgba(146, 118, 89, 0.18);
   backdrop-filter: blur(12px);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 .bottom-nav a {
@@ -131,10 +207,28 @@ body.ready .star-hero {
   font-size: 12px;
   padding: 6px 8px;
   border-radius: 10px;
+  white-space: nowrap;
+  position: relative;
 }
 
 .bottom-nav a:hover {
   color: var(--accent);
+}
+
+.bottom-nav a.nav-active {
+  color: var(--accent);
+}
+
+.bottom-nav-indicator {
+  position: absolute;
+  left: 0;
+  bottom: 4px;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  border-radius: 999px;
+  pointer-events: none;
+  transition: transform 0.4s cubic-bezier(0.22, 0.9, 0.25, 1.1), width 0.35s ease;
 }
 
 .actions {
@@ -180,6 +274,27 @@ body.ready .star-hero {
 .hero-content p {
   color: var(--muted);
   line-height: 1.6;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.guide-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(214, 198, 178, 0.6);
+  background: rgba(255, 252, 248, 0.85);
+  box-shadow: 0 10px 24px rgba(120, 96, 72, 0.12);
+}
+
+.guide-card strong {
+  display: block;
+  color: #6c4b2f;
+  margin-bottom: 6px;
 }
 
 .hero-actions {
@@ -342,6 +457,28 @@ textarea {
   border: 1px solid rgba(214, 198, 178, 0.5);
   background: rgba(255, 252, 248, 0.9);
   box-shadow: 0 6px 18px rgba(120, 96, 72, 0.12);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.student-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(120, 96, 72, 0.16);
+}
+
+.student-card .student-details {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 240ms ease, opacity 200ms ease;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.student-card.expanded .student-details {
+  max-height: 200px;
+  opacity: 1;
 }
 
 .event-list {
@@ -437,6 +574,27 @@ textarea {
   max-height: 2000px;
   opacity: 1;
   pointer-events: auto;
+}
+
+.section-panel {
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.section-panel.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.section-panel.expanded {
+  max-height: 2000px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.toggle-btn {
+  margin-bottom: 12px;
 }
 
 .message-list {
@@ -540,7 +698,8 @@ textarea {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 40;
+  z-index: 60;
+  pointer-events: auto;
 }
 
 .drawer.open {
@@ -552,16 +711,16 @@ textarea {
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.08);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 30;
+  z-index: 50;
 }
 
 .drawer-overlay.open {
   opacity: 1;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .fab {
@@ -758,13 +917,18 @@ textarea {
   }
 }
 
-@media (max-width: 980px) {
+
+@media (max-width: 1024px) {
   .content {
     grid-template-columns: 1fr;
   }
 
   .nav {
     display: none;
+  }
+
+  .bottom-nav {
+    display: flex;
   }
 
   .star-hero-inner {
@@ -776,20 +940,125 @@ textarea {
   }
 }
 
+.toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: grid;
+  gap: 10px;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 240px;
+  max-width: 320px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(24, 28, 50, 0.9);
+  color: #f2f6ff;
+  border: 1px solid rgba(160, 200, 255, 0.25);
+  box-shadow: 0 16px 36px rgba(10, 20, 40, 0.35);
+  backdrop-filter: blur(14px);
+  opacity: 0;
+  transform: translateY(8px);
+  animation: toastIn 220ms ease forwards;
+}
+
+.toast-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #dce9ff;
+}
+
+.toast.hide {
+  animation: toastOut 220ms ease forwards;
+}
+
+@keyframes toastIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 .star-panel {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  left: 16px;
+  top: 16px;
   width: min(280px, 90%);
   max-height: 220px;
-  overflow: auto;
+  overflow: hidden;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(130, 170, 255, 0.35);
-  background: rgba(6, 10, 26, 0.75);
+  border: 1px solid rgba(130, 170, 255, 0.45);
+  background: rgba(18, 26, 56, 0.38);
   color: #e7efff;
   box-shadow: 0 12px 28px rgba(6, 12, 30, 0.5);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  transform: translateY(8px) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.star-panel.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.star-panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 14px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(140, 200, 255, 0.6), rgba(120, 150, 255, 0.2), rgba(200, 230, 255, 0.6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: borderFlow 6s linear infinite;
+  pointer-events: none;
+}
+
+.star-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.star-panel-close {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e7efff;
+  border: 1px solid rgba(130, 170, 255, 0.35);
+  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.star-panel::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 22px;
+  width: 14px;
+  height: 14px;
+  background: rgba(18, 26, 56, 0.38);
+  border-left: 1px solid rgba(130, 170, 255, 0.35);
+  border-top: 1px solid rgba(130, 170, 255, 0.35);
+  transform: rotate(45deg);
 }
 
 .star-panel.hidden {
@@ -811,13 +1080,43 @@ textarea {
   display: grid;
   gap: 6px;
   font-size: 12px;
+  max-height: 130px;
+  overflow: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 210, 255, 0.45) transparent;
 }
 
 .star-panel-item {
   padding: 6px 8px;
   border-radius: 10px;
-  background: rgba(120, 170, 255, 0.12);
-  border: 1px solid rgba(120, 170, 255, 0.2);
+  background: rgba(120, 170, 255, 0.1);
+  border: 1px solid rgba(120, 170, 255, 0.25);
+}
+
+.star-panel-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.star-panel-list::-webkit-scrollbar-thumb {
+  background: rgba(160, 210, 255, 0.45);
+  border-radius: 999px;
+}
+
+.star-panel-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes borderFlow {
+  0% {
+    filter: drop-shadow(0 0 6px rgba(160, 210, 255, 0.35));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(160, 210, 255, 0.55));
+  }
+  100% {
+    filter: drop-shadow(0 0 6px rgba(160, 210, 255, 0.35));
+  }
 }
 
 @media (max-width: 640px) {
@@ -844,10 +1143,6 @@ textarea {
 
   .nav {
     display: none;
-  }
-
-  .bottom-nav {
-    display: flex;
   }
 
   .hero,
@@ -912,6 +1207,7 @@ textarea {
   .star-panel {
     left: 12px;
     right: 12px;
+    top: auto;
     bottom: 12px;
     width: auto;
     max-height: 180px;

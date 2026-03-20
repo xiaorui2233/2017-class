@@ -1,5 +1,6 @@
 ﻿const CONFIG = {
-  API_BASE_URL: "https://two017-class.onrender.com",
+  API_BASE_URL:"http://localhost:4000"
+  // "https://two017-class.onrender.com",
 };
 
 const state = {
@@ -24,10 +25,12 @@ const starPanel = document.getElementById("starPanel");
 const starPanelTitle = document.getElementById("starPanelTitle");
 const starPanelMeta = document.getElementById("starPanelMeta");
 const starPanelList = document.getElementById("starPanelList");
+const starPanelClose = document.getElementById("starPanelClose");
 const statusEl = document.getElementById("status");
 const httpsWarning = document.getElementById("httpsWarning");
 const pageStack = document.getElementById("pageStack");
 const homeSection = document.getElementById("home");
+const mainSection = document.getElementById("pageMain") || homeSection;
 const starSection = document.getElementById("constellation");
 
 const openAuth = document.getElementById("openAuth");
@@ -64,6 +67,11 @@ const openProfile = document.getElementById("openProfile");
 const closeProfile = document.getElementById("closeProfile");
 const sidebarDrawer = document.getElementById("sidebarDrawer");
 const navLinks = document.querySelectorAll(".nav a");
+const navIndicator = document.getElementById("navIndicator");
+const bottomNavIndicator = document.getElementById("bottomNavIndicator");
+const bottomNav = document.querySelector(".bottom-nav");
+const pageTransition = document.getElementById("pageTransition");
+const toastStack = document.getElementById("toastStack");
 
 const featuredTitle = document.getElementById("featuredTitle");
 const featuredDate = document.getElementById("featuredDate");
@@ -90,6 +98,16 @@ const msgSubmit = document.getElementById("msgSubmit");
 const msgHint = document.getElementById("msgHint");
 const toggleMessages = document.getElementById("toggleMessages");
 const messagePanel = document.getElementById("messagePanel");
+const toggleStudents = document.getElementById("toggleStudents");
+const studentPanel = document.getElementById("studentPanel");
+const togglePosts = document.getElementById("togglePosts");
+const postsPanel = document.getElementById("postsPanel");
+const toggleEvents = document.getElementById("toggleEvents");
+const eventsPanel = document.getElementById("eventsPanel");
+const toggleTimeline = document.getElementById("toggleTimeline");
+const timelinePanel = document.getElementById("timelinePanel");
+const toggleAlbums = document.getElementById("toggleAlbums");
+const albumsPanel = document.getElementById("albumsPanel");
 
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
@@ -148,12 +166,21 @@ function closeModal() {
 }
 
 function openDrawer() {
+  if (!window.location.pathname.includes("/students")) {
+    showToast("提示", "资料/关系仅在 Students 页面可用。");
+    return;
+  }
+  if (!sidebarDrawer || !closeProfile) {
+    showToast("提示", "当前页面未加载资料面板。");
+    return;
+  }
   sidebarDrawer.classList.add("open");
   sidebarDrawer.setAttribute("aria-hidden", "false");
   closeProfile.classList.add("open");
 }
 
 function closeDrawer() {
+  if (!sidebarDrawer || !closeProfile) return;
   sidebarDrawer.classList.remove("open");
   sidebarDrawer.setAttribute("aria-hidden", "true");
   closeProfile.classList.remove("open");
@@ -163,6 +190,71 @@ function updateHeaderHeight() {
   const header = document.querySelector(".topbar");
   const height = header ? header.offsetHeight : 72;
   document.documentElement.style.setProperty("--header-h", `${height}px`);
+}
+
+function showToast(title, message) {
+  if (!toastStack) return;
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `
+    <div class="toast-title">${title || "提示"}</div>
+    <div>${message || ""}</div>
+  `;
+  toastStack.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 240);
+  }, 2400);
+}
+
+function normalizePath(pathname) {
+  if (!pathname) return "/";
+  return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+function setNavIndicator(container, indicator, scrollIntoView = false) {
+  if (!container || !indicator) return;
+  const links = Array.from(container.querySelectorAll("a"));
+  if (!links.length) return;
+  const currentPath = normalizePath(window.location.pathname);
+  let active = links.find((link) => {
+    const linkPath = normalizePath(new URL(link.href, window.location.origin).pathname);
+    return linkPath === currentPath;
+  });
+  if (!active) {
+    active = links[0];
+  }
+  links.forEach((link) => link.classList.toggle("nav-active", link === active));
+  const rect = active.getBoundingClientRect();
+  const parentRect = container.getBoundingClientRect();
+  const left = rect.left - parentRect.left + container.scrollLeft;
+  indicator.style.width = `${rect.width}px`;
+  indicator.style.transform = `translateX(${left}px)`;
+  if (scrollIntoView) {
+    active.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }
+}
+
+function updateNavIndicators() {
+  setNavIndicator(document.querySelector(".nav"), navIndicator);
+  setNavIndicator(bottomNav, bottomNavIndicator, true);
+}
+
+function getNavOrder() {
+  return Array.from(document.querySelectorAll(".nav a")).map((link) =>
+    normalizePath(new URL(link.href, window.location.origin).pathname)
+  );
+}
+
+function applyEnterTransition() {
+  const dir = sessionStorage.getItem("navDirection");
+  if (!dir) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.remove(`nav-enter-${dir}`);
+      sessionStorage.removeItem("navDirection");
+    });
+  });
 }
 
 function resizeCanvas() {
@@ -357,19 +449,21 @@ function drawScene() {
     const pos = state.positions.get(student.id);
     if (!pos) return;
     const flicker = 0.6 + 0.4 * Math.sin(t * 2.2 + student.id.length);
-    const isSelected = state.selectedId === student.id;
-    const radius = isSelected ? 8 : state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
+    const radius = state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = isSelected
-      ? "#fff4b0"
-      : state.hoveredId === student.id
-        ? "#fef9d7"
-        : "rgba(254, 249, 215, 0.85)";
-    ctx.shadowColor = isSelected ? "rgba(255, 214, 120, 0.9)" : "rgba(242, 167, 255, 0.8)";
-    ctx.shadowBlur = isSelected ? 20 : state.hoveredId === student.id ? 16 : 6 + flicker * 8;
+    ctx.fillStyle = state.hoveredId === student.id ? "#fef9d7" : "rgba(254, 249, 215, 0.85)";
+    ctx.shadowColor = "rgba(242, 167, 255, 0.8)";
+    ctx.shadowBlur = state.hoveredId === student.id ? 16 : 6 + flicker * 8;
     ctx.fill();
   });
+
+  if (state.selectedId) {
+    const pos = state.positions.get(state.selectedId);
+    if (pos) {
+      positionStarPanel(pos.x, pos.y);
+    }
+  }
 }
 
 function animate() {
@@ -401,9 +495,29 @@ function getStudentById(id) {
   return state.students.find((s) => s.id === id);
 }
 
+function positionStarPanel(x, y) {
+  if (!starPanel || !canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const panelRect = starPanel.getBoundingClientRect();
+  const margin = 12;
+  let left = rect.left + x + 16;
+  let top = rect.top + y + 16;
+  if (left + panelRect.width > rect.right - margin) {
+    left = rect.right - panelRect.width - margin;
+  }
+  if (top + panelRect.height > rect.bottom - margin) {
+    top = rect.bottom - panelRect.height - margin;
+  }
+  left = Math.max(rect.left + margin, left);
+  top = Math.max(rect.top + margin, top);
+  starPanel.style.left = `${left - rect.left}px`;
+  starPanel.style.top = `${top - rect.top}px`;
+}
+
 function renderStarPanel(studentId) {
   if (!starPanel || !starPanelTitle || !starPanelList) return;
   if (!studentId) {
+    starPanel.classList.remove("show");
     starPanel.classList.add("hidden");
     starPanelTitle.textContent = "";
     starPanelMeta.textContent = "";
@@ -411,6 +525,7 @@ function renderStarPanel(studentId) {
     return;
   }
   starPanel.classList.remove("hidden");
+  starPanel.classList.add("show");
   const student = getStudentById(studentId);
   starPanelTitle.textContent = student ? student.name : studentId;
   starPanelMeta.textContent = student?.tags || student?.contact || "";
@@ -434,17 +549,34 @@ function renderStarPanel(studentId) {
 }
 
 function refreshStudentList() {
+  if (!studentList) return;
   studentList.innerHTML = "";
   state.students.forEach((student) => {
     const card = document.createElement("div");
     card.className = "student-card";
+    const bio = student.bio || "暂无简介";
+    const contact = student.contact || "暂无联系方式";
+    const tags = student.tags || "暂无标签";
     card.innerHTML = `
       <strong>${student.name}</strong>
       <div>${student.tags || ""}</div>
+      <div class="student-details">
+        <div>${bio}</div>
+        <div>${contact}</div>
+        <div>${tags}</div>
+      </div>
     `;
+    card.addEventListener("click", () => {
+      const isExpanded = card.classList.contains("expanded");
+      document.querySelectorAll(".student-card.expanded").forEach((el) => {
+        if (el !== card) el.classList.remove("expanded");
+      });
+      card.classList.toggle("expanded", !isExpanded);
+    });
     studentList.appendChild(card);
   });
 
+  if (!relationTo) return;
   relationTo.innerHTML = "";
   state.students.forEach((student) => {
     const option = document.createElement("option");
@@ -455,6 +587,7 @@ function refreshStudentList() {
 }
 
 function refreshRelations() {
+  if (!relationList) return;
   relationList.innerHTML = "";
   if (!state.me) return;
   const mine = state.relationships.filter((rel) => rel.from_student_id === state.me.id);
@@ -513,59 +646,67 @@ async function loadPendingRelations() {
 
 function renderContent(data) {
   if (data.featured) {
-    featuredTitle.textContent = data.featured.title || "";
-    featuredDate.textContent = data.featured.date || "";
-    featuredDesc.textContent = data.featured.desc || "";
+    if (featuredTitle) featuredTitle.textContent = data.featured.title || "";
+    if (featuredDate) featuredDate.textContent = data.featured.date || "";
+    if (featuredDesc) featuredDesc.textContent = data.featured.desc || "";
   }
 
-  eventsList.innerHTML = "";
-  (data.events || []).forEach((event) => {
-    const li = document.createElement("li");
-    li.textContent = event;
-    eventsList.appendChild(li);
-  });
+  if (eventsList) {
+    eventsList.innerHTML = "";
+    (data.events || []).forEach((event) => {
+      const li = document.createElement("li");
+      li.textContent = event;
+      eventsList.appendChild(li);
+    });
+  }
 
-  postList.innerHTML = "";
-  (data.posts || []).forEach((post) => {
-    const card = document.createElement("div");
-    card.className = "post-card";
-    card.innerHTML = `
-      <img class="post-cover" src="${post.cover || ""}" alt="${post.title || ""}" />
-      <div>
-        <strong>${post.title || ""}</strong>
-        <div class="post-meta">${post.date || ""}</div>
-        <p>${post.summary || ""}</p>
-      </div>
-    `;
-    postList.appendChild(card);
-  });
+  if (postList) {
+    postList.innerHTML = "";
+    (data.posts || []).forEach((post) => {
+      const card = document.createElement("div");
+      card.className = "post-card";
+      card.innerHTML = `
+        <img class="post-cover" src="${post.cover || ""}" alt="${post.title || ""}" />
+        <div>
+          <strong>${post.title || ""}</strong>
+          <div class="post-meta">${post.date || ""}</div>
+          <p>${post.summary || ""}</p>
+        </div>
+      `;
+      postList.appendChild(card);
+    });
+  }
 
-  timelineList.innerHTML = "";
-  (data.timeline || []).forEach((item) => {
-    const div = document.createElement("div");
-    div.className = "timeline-item";
-    div.innerHTML = `
-      <div class="dot"></div>
-      <div>
-        <strong>${item.year || ""}</strong>
-        <p>${item.text || ""}</p>
-      </div>
-    `;
-    timelineList.appendChild(div);
-  });
+  if (timelineList) {
+    timelineList.innerHTML = "";
+    (data.timeline || []).forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "timeline-item";
+      div.innerHTML = `
+        <div class="dot"></div>
+        <div>
+          <strong>${item.year || ""}</strong>
+          <p>${item.text || ""}</p>
+        </div>
+      `;
+      timelineList.appendChild(div);
+    });
+  }
 
-  albumGrid.innerHTML = "";
-  albumItems = data.albums || [];
-  albumItems.forEach((item, index) => {
-    const div = document.createElement("div");
-    div.className = "album-item";
-    div.innerHTML = `
-      <img class="album-img" src="${item.url}" alt="${item.title || ""}" />
-      <div class="album-caption">${item.title || ""} ${item.date ? "· " + item.date : ""}</div>
-    `;
-    div.addEventListener("click", () => openLightbox(index));
-    albumGrid.appendChild(div);
-  });
+  if (albumGrid) {
+    albumGrid.innerHTML = "";
+    albumItems = data.albums || [];
+    albumItems.forEach((item, index) => {
+      const div = document.createElement("div");
+      div.className = "album-item";
+      div.innerHTML = `
+        <img class="album-img" src="${item.url}" alt="${item.title || ""}" />
+        <div class="album-caption">${item.title || ""} ${item.date ? "· " + item.date : ""}</div>
+      `;
+      div.addEventListener("click", () => openLightbox(index));
+      albumGrid.appendChild(div);
+    });
+  }
 }
 
 async function apiFetch(path, options = {}) {
@@ -608,6 +749,7 @@ async function loadData() {
 
 async function loadMessages() {
   try {
+    if (!messageList) return;
     const data = await apiFetch("/messages");
     messageList.innerHTML = "";
     data.forEach((msg) => {
@@ -623,9 +765,11 @@ async function loadMessages() {
       messageList.appendChild(card);
     });
   } catch (err) {
-    msgHint.textContent = err.message.includes("Missing token")
-      ? "请先登录后查看留言"
-      : err.message;
+    if (msgHint) {
+      msgHint.textContent = err.message.includes("Missing token")
+        ? "请先登录后查看留言"
+        : err.message;
+    }
   }
 }
 
@@ -811,13 +955,14 @@ function isNearSectionTop(section) {
 }
 
 function forceHomeView() {
-  if (!homeSection || !pageStack) return;
+  const target = mainSection;
+  if (!target || !pageStack) return;
   const originalBehavior = pageStack.style.scrollBehavior;
   pageStack.style.scrollBehavior = "auto";
-  if (location.hash && location.hash !== "#home") {
-    history.replaceState(null, "", "#home");
+  if (location.hash && location.hash !== "#pageMain") {
+    history.replaceState(null, "", "#pageMain");
   }
-  const top = homeSection.offsetTop;
+  const top = target.offsetTop;
   pageStack.scrollTop = top;
   requestAnimationFrame(() => {
     pageStack.scrollTop = top;
@@ -835,59 +980,61 @@ function forceHomeView() {
 
 let touchStartY = null;
 
-pageStack.addEventListener(
-  "wheel",
-  (event) => {
-    if (autoScrollLock) return;
-    const delta = event.deltaY;
-    if (isNearSectionTop(homeSection) && delta < -12) {
-      event.preventDefault();
-      smoothTo(starSection);
-      return;
-    }
-    if (isNearSectionTop(starSection) && delta > 12) {
-      event.preventDefault();
-      smoothTo(homeSection);
-    }
-  },
-  { passive: false }
-);
+if (pageStack) {
+  pageStack.addEventListener(
+    "wheel",
+    (event) => {
+      if (autoScrollLock) return;
+      const delta = event.deltaY;
+      if (isNearSectionTop(mainSection) && delta < -12) {
+        event.preventDefault();
+        smoothTo(starSection);
+        return;
+      }
+      if (isNearSectionTop(starSection) && delta > 12) {
+        event.preventDefault();
+        smoothTo(mainSection);
+      }
+    },
+    { passive: false }
+  );
 
-pageStack.addEventListener(
-  "touchstart",
-  (event) => {
-    touchStartY = event.touches[0].clientY;
-  },
-  { passive: true }
-);
+  pageStack.addEventListener(
+    "touchstart",
+    (event) => {
+      touchStartY = event.touches[0].clientY;
+    },
+    { passive: true }
+  );
 
-pageStack.addEventListener(
-  "touchmove",
-  (event) => {
-    if (autoScrollLock || touchStartY === null) return;
-    const delta = event.touches[0].clientY - touchStartY;
-    if (isNearSectionTop(homeSection) && delta < -35) {
-      event.preventDefault();
-      smoothTo(starSection);
-      return;
-    }
-    if (isNearSectionTop(starSection) && delta > 35) {
-      event.preventDefault();
-      smoothTo(homeSection);
-    }
-  },
-  { passive: false }
-);
+  pageStack.addEventListener(
+    "touchmove",
+    (event) => {
+      if (autoScrollLock || touchStartY === null) return;
+      const delta = event.touches[0].clientY - touchStartY;
+      if (isNearSectionTop(mainSection) && delta < -35) {
+        event.preventDefault();
+        smoothTo(starSection);
+        return;
+      }
+      if (isNearSectionTop(starSection) && delta > 35) {
+        event.preventDefault();
+        smoothTo(mainSection);
+      }
+    },
+    { passive: false }
+  );
 
-pageStack.addEventListener(
-  "touchend",
-  () => {
-    touchStartY = null;
-  },
-  { passive: true }
-);
+  pageStack.addEventListener(
+    "touchend",
+    () => {
+      touchStartY = null;
+    },
+    { passive: true }
+  );
+}
 
-canvas.addEventListener("mousemove", (event) => {
+if (canvas) canvas.addEventListener("mousemove", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
@@ -914,13 +1061,13 @@ canvas.addEventListener("mousemove", (event) => {
   drawScene();
 });
 
-canvas.addEventListener("mouseleave", () => {
+if (canvas) canvas.addEventListener("mouseleave", () => {
   state.hoveredId = null;
   hideHoverCard();
   drawScene();
 });
 
-canvas.addEventListener("click", (event) => {
+if (canvas) canvas.addEventListener("click", (event) => {
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
@@ -939,14 +1086,25 @@ canvas.addEventListener("click", (event) => {
   }
   state.selectedId = picked ? picked.id : null;
   renderStarPanel(state.selectedId);
+  if (state.selectedId) {
+    positionStarPanel(x, y);
+  }
   drawScene();
 });
 
-registerBtn.addEventListener("click", register);
-loginBtn.addEventListener("click", () => loginWithToken(loginToken.value.trim()));
-saveMeBtn.addEventListener("click", saveMe);
-addRelationBtn.addEventListener("click", addRelation);
-msgSubmit.addEventListener("click", submitMessage);
+if (starPanelClose) {
+  starPanelClose.addEventListener("click", () => {
+    state.selectedId = null;
+    renderStarPanel(null);
+    drawScene();
+  });
+}
+
+if (registerBtn) registerBtn.addEventListener("click", register);
+if (loginBtn) loginBtn.addEventListener("click", () => loginWithToken(loginToken.value.trim()));
+if (saveMeBtn) saveMeBtn.addEventListener("click", saveMe);
+if (addRelationBtn) addRelationBtn.addEventListener("click", addRelation);
+if (msgSubmit) msgSubmit.addEventListener("click", submitMessage);
 
 if (toggleMessages && messagePanel) {
   toggleMessages.addEventListener("click", () => {
@@ -957,17 +1115,41 @@ if (toggleMessages && messagePanel) {
   });
 }
 
-openAuth.addEventListener("click", openModal);
-closeAuth.addEventListener("click", closeModal);
-openProfile.addEventListener("click", openDrawer);
-closeProfile.addEventListener("click", closeDrawer);
-lightboxClose.addEventListener("click", closeLightbox);
-lightboxPrev.addEventListener("click", () => {
+if (toggleStudents && studentPanel) {
+  toggleStudents.addEventListener("click", () => {
+    const isCollapsed = studentPanel.classList.contains("collapsed");
+    studentPanel.classList.toggle("collapsed", !isCollapsed);
+    studentPanel.classList.toggle("expanded", isCollapsed);
+    toggleStudents.textContent = isCollapsed ? "收起学生列表" : "展开学生列表";
+  });
+}
+
+function bindToggle(btn, panel, expandedText, collapsedText) {
+  if (!btn || !panel) return;
+  btn.addEventListener("click", () => {
+    const isCollapsed = panel.classList.contains("collapsed");
+    panel.classList.toggle("collapsed", !isCollapsed);
+    panel.classList.toggle("expanded", isCollapsed);
+    btn.textContent = isCollapsed ? expandedText : collapsedText;
+  });
+}
+
+bindToggle(togglePosts, postsPanel, "收起班级动态", "展开班级动态");
+bindToggle(toggleEvents, eventsPanel, "收起活动回顾", "展开活动回顾");
+bindToggle(toggleTimeline, timelinePanel, "收起时间轴", "展开时间轴");
+bindToggle(toggleAlbums, albumsPanel, "收起相册墙", "展开相册墙");
+
+if (openAuth) openAuth.addEventListener("click", openModal);
+if (closeAuth) closeAuth.addEventListener("click", closeModal);
+if (openProfile) openProfile.addEventListener("click", openDrawer);
+if (closeProfile) closeProfile.addEventListener("click", closeDrawer);
+if (lightboxClose) lightboxClose.addEventListener("click", closeLightbox);
+if (lightboxPrev) lightboxPrev.addEventListener("click", () => {
   if (!albumItems.length) return;
   albumIndex = (albumIndex - 1 + albumItems.length) % albumItems.length;
   showLightbox();
 });
-lightboxNext.addEventListener("click", () => {
+if (lightboxNext) lightboxNext.addEventListener("click", () => {
   if (!albumItems.length) return;
   albumIndex = (albumIndex + 1) % albumItems.length;
   showLightbox();
@@ -976,6 +1158,7 @@ lightboxNext.addEventListener("click", () => {
 window.addEventListener("resize", () => {
   updateHeaderHeight();
   resizeCanvas();
+  updateNavIndicators();
 });
 
 if (scrollHome) {
@@ -986,14 +1169,13 @@ if (scrollHome) {
 
 if (scrollEvents) {
   scrollEvents.addEventListener("click", () => {
-    document.getElementById("events")?.scrollIntoView({ behavior: "smooth" });
+    window.location.href = "/2017-class/class/";
   });
 }
 
 if (scrollProfile) {
   scrollProfile.addEventListener("click", () => {
-    document.getElementById("meSection")?.scrollIntoView({ behavior: "smooth" });
-    openDrawer();
+    window.location.href = "/2017-class/students/";
   });
 }
 
@@ -1009,6 +1191,50 @@ navLinks.forEach((link) => {
   });
 });
 
+document.querySelectorAll(".nav a, .bottom-nav a").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const href = link.getAttribute("href") || "";
+    if (href.startsWith("#")) return;
+    // Let the browser handle navigation (view-transition meta will animate cross-page)
+    event.preventDefault();
+    const navOrder = getNavOrder();
+    const current = normalizePath(window.location.pathname);
+    const target = normalizePath(new URL(href, window.location.origin).pathname);
+    const currentIndex = navOrder.indexOf(current);
+    const targetIndex = navOrder.indexOf(target);
+    const dir = currentIndex !== -1 && targetIndex !== -1 && targetIndex < currentIndex ? "left" : "right";
+    sessionStorage.setItem("navDirection", dir);
+    document.documentElement.classList.add(`nav-leave-${dir}`);
+    setTimeout(() => {
+      window.location.href = href;
+    }, 320);
+  });
+  link.addEventListener("mouseenter", () => prefetchUrl(link.getAttribute("href")));
+  link.addEventListener("focus", () => prefetchUrl(link.getAttribute("href")));
+});
+
+function prefetchUrl(href) {
+  if (!href || href.startsWith("#")) return;
+  if (document.querySelector(`link[rel="prefetch"][href="${href}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.href = href;
+  link.as = "document";
+  document.head.appendChild(link);
+}
+
+function prefetchNavNeighbors() {
+  const links = Array.from(document.querySelectorAll(".nav a"));
+  if (!links.length) return;
+  const current = normalizePath(window.location.pathname);
+  const index = links.findIndex((link) => normalizePath(new URL(link.href, window.location.origin).pathname) === current);
+  if (index === -1) return;
+  const prev = links[index - 1];
+  const next = links[index + 1];
+  if (prev) prefetchUrl(prev.getAttribute("href"));
+  if (next) prefetchUrl(next.getAttribute("href"));
+}
+
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeModal();
@@ -1017,11 +1243,28 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+document.addEventListener("mousedown", (event) => {
+  if (!sidebarDrawer || !sidebarDrawer.classList.contains("open")) return;
+  const target = event.target;
+  if (sidebarDrawer.contains(target)) return;
+  if (openProfile && openProfile.contains(target)) return;
+  closeDrawer();
+});
+
 async function init() {
   showWarningIfNeeded();
+  applyEnterTransition();
   updateHeaderHeight();
+  updateNavIndicators();
   resizeCanvas();
-  forceHomeView();
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+  idle(prefetchNavNeighbors);
+  if (homeSection && pageStack) {
+    forceHomeView();
+  } else if (pageStack) {
+    document.body.classList.remove("constellation-lock");
+    pageStack.classList.remove("hidden");
+  }
   setStatus("加载中...");
   await loadContent();
   await loadData();
@@ -1039,10 +1282,12 @@ init();
 animate();
 
 window.addEventListener("load", () => {
-  if (!pageStack || !homeSection) return;
-  if (!isNearSectionTop(homeSection)) {
+  if (!pageStack || !mainSection) return;
+  if (!isNearSectionTop(mainSection)) {
     forceHomeView();
   }
+  updateNavIndicators();
+  setTimeout(updateNavIndicators, 120);
 });
 
 // Reveal animations

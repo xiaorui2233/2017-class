@@ -8,18 +8,31 @@ const basePath = "/2017-class/";
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          const dir = sessionStorage.getItem("navDirection");
+          if (dir) document.documentElement.classList.add(`nav-enter-${dir}`);
+        } catch (e) {}
+      })();
+    </script>
     <title>{title}</title>
   </head>
   <body>
     <div id="app">
+      <div class="page-transition" id="pageTransition">
+        <div class="page-transition-glow"></div>
+      </div>
       <header class="topbar">
         <div class="brand">Angela.</div>
         <nav class="nav">
-          <a href="#home">Home</a>
-          <a href="#events">Class</a>
-          <a href="#timeline">Timeline</a>
-          <a href="#constellation">Starfield</a>
-          <a href="#students">Students</a>
+          <a href={`${basePath}`}>Home</a>
+          <a href={`${basePath}class/`}>Class</a>
+          <a href={`${basePath}timeline/`}>Timeline</a>
+          <a href={`${basePath}starfield/`}>Starfield</a>
+          <a href={`${basePath}albums/`}>Albums</a>
+          <a href={`${basePath}students/`}>Students</a>
+          <span class="nav-indicator" id="navIndicator"></span>
         </nav>
         <div class="actions">
           <button class="ghost" id="openAuth">登录 / 注册</button>
@@ -27,14 +40,18 @@ const basePath = "/2017-class/";
         </div>
       </header>
       <nav class="bottom-nav" aria-label="Mobile Navigation">
-        <a href="#home">Home</a>
-        <a href="#events">Class</a>
-        <a href="#timeline">Timeline</a>
-        <a href="#constellation">Starfield</a>
-        <a href="#students">Students</a>
+        <a href={`${basePath}`}>Home</a>
+        <a href={`${basePath}class/`}>Class</a>
+        <a href={`${basePath}timeline/`}>Timeline</a>
+        <a href={`${basePath}starfield/`}>Starfield</a>
+        <a href={`${basePath}albums/`}>Albums</a>
+        <a href={`${basePath}students/`}>Students</a>
+        <span class="bottom-nav-indicator" id="bottomNavIndicator"></span>
       </nav>
       <slot />
     </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
     <button class="fab" id="openProfile">资料/关系</button>
     <div class="drawer-overlay" id="closeProfile"></div>
