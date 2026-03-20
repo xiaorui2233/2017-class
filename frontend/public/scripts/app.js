@@ -1,6 +1,7 @@
 ﻿const CONFIG = {
-  API_BASE_URL:"http://localhost:4000"
-  // "https://two017-class.onrender.com",
+  API_BASE_URL:
+  //"http://localhost:4000"
+   "https://two017-class.onrender.com",
 };
 
 const state = {
