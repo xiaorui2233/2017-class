@@ -1,0 +1,69 @@
+﻿---
+import "../styles/global.css";
+const { title = "2017级1班 · 毕业纪念册" } = Astro.props;
+const basePath = "/2017-class/";
+---
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">Angela.</div>
+        <nav class="nav">
+          <a href="#home">Home</a>
+          <a href="#events">Class</a>
+          <a href="#timeline">Timeline</a>
+          <a href="#constellation">Starfield</a>
+          <a href="#students">Students</a>
+        </nav>
+        <div class="actions">
+          <button class="ghost" id="openAuth">登录 / 注册</button>
+          <span class="status" id="status"></span>
+        </div>
+      </header>
+      <slot />
+    </div>
+
+    <button class="fab" id="openProfile">资料/关系</button>
+    <div class="drawer-overlay" id="closeProfile"></div>
+
+    <div class="modal" id="authModal" aria-hidden="true">
+      <div class="modal-overlay" id="closeAuth"></div>
+      <div class="modal-content">
+        <h3>登录 / 注册</h3>
+        <div class="form-grid">
+          <label>姓名（注册用）</label>
+          <input id="registerName" type="text" placeholder="真实姓名" />
+
+          <label>一次性邀请码</label>
+          <input id="registerInvite" type="text" placeholder="管理员发放的邀请码" />
+
+          <button id="registerBtn">注册并获取Token</button>
+        </div>
+        <div class="form-grid">
+          <label>Token（登录用）</label>
+          <input id="loginToken" type="text" placeholder="输入你的Token" />
+          <button id="loginBtn">登录</button>
+        </div>
+        <div class="hint" id="tokenHint"></div>
+      </div>
+    </div>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <div class="lightbox-overlay" id="lightboxClose"></div>
+      <div class="lightbox-content">
+        <button class="lightbox-btn" id="lightboxPrev">‹</button>
+        <img id="lightboxImage" alt="album" />
+        <button class="lightbox-btn" id="lightboxNext">›</button>
+        <div class="lightbox-meta" id="lightboxMeta"></div>
+      </div>
+    </div>
+
+    <script type="module" src={`${basePath}scripts/app.js`}></script>
+  </body>
+</html>

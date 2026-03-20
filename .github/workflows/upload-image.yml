@@ -1,0 +1,35 @@
+name: Upload Image
+
+on:
+  repository_dispatch:
+    types: [upload_image]
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write file
+        run: |
+          node -e "const fs=require('fs'); const path=require('path'); const p=process.env.UPLOAD_PATH || 'assets/uploads'; const name=process.env.FILE_NAME; const buf=Buffer.from(process.env.CONTENT_BASE64,'base64'); const dir=path.join(process.cwd(), p); fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,name), buf);"
+        env:
+          UPLOAD_PATH: ${{ github.event.client_payload.upload_path }}
+          FILE_NAME: ${{ github.event.client_payload.filename }}
+          CONTENT_BASE64: ${{ github.event.client_payload.content_base64 }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Upload image"
+          git push origin HEAD:${{ github.event.client_payload.branch || 'main' }}

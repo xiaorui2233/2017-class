@@ -1,0 +1,172 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="2017级1班 毕业季星空">
+  <div id="pageStack" class="hidden">
+    <section class="star-hero snap-section" id="constellation">
+      <div class="star-hero-inner">
+        <div>
+          <div class="hero-tag">Graduation Constellation</div>
+          <h1>2017级1班 · 星空关系图</h1>
+          <p>每位同学都是一颗星，连线构成我们共同的星座。</p>
+          <div class="pull-hint">上滑进入星空 · 下滑回到主页</div>
+        </div>
+        <div class="starfield">
+          <canvas id="starCanvas"></canvas>
+          <div class="hover-card" id="hoverCard"></div>
+          <div class="warning" id="httpsWarning">
+            当前页面为 HTTPS，而 API 为 HTTP。浏览器可能阻止请求。
+            请使用 HTTP 访问此页面或为后端开启 HTTPS。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero snap-section" id="home">
+      <div class="hero-content">
+        <div class="hero-tag">Angela Class Archive</div>
+        <h2>为热爱创造，为成长记录。</h2>
+        <p>这是2017级1班的毕业季主页：班级大事、同学档案与星空关系。</p>
+        <div class="hero-actions">
+          <button id="scrollEvents">查看班级大事</button>
+          <button class="ghost" id="scrollProfile">完善资料</button>
+        </div>
+      </div>
+      <div class="hero-card" id="about">
+        <h3>About Class</h3>
+        <p>这里记录我们共同的回忆、同学关系与毕业季的每个高光时刻。</p>
+      </div>
+    </section>
+
+    <main class="content" id="events">
+      <section class="feed">
+        <article class="card featured">
+          <div class="card-header">
+            <h3>班级大事</h3>
+            <span>Featured</span>
+          </div>
+          <h4 id="featuredTitle">毕业合影日</h4>
+          <div class="meta" id="featuredDate">2026/06/20</div>
+          <p id="featuredDesc">记录我们的合影、班级口号与全员出席的那一天。</p>
+        </article>
+
+        <article class="card" id="posts">
+          <div class="card-header">
+            <h3>班级动态</h3>
+            <span>Moments</span>
+          </div>
+          <div class="post-list" id="postList"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h3>活动回顾</h3>
+            <span>Latest</span>
+          </div>
+          <ul class="event-list" id="eventsList"></ul>
+        </article>
+
+        <article class="card" id="timeline">
+          <div class="card-header">
+            <h3>时间轴</h3>
+            <span>Timeline</span>
+          </div>
+          <div class="timeline" id="timelineList"></div>
+        </article>
+
+        <article class="card" id="students">
+          <div class="card-header">
+            <h3>学生列表</h3>
+            <span>Students</span>
+          </div>
+          <div class="student-list" id="studentList"></div>
+        </article>
+
+        <article class="card" id="albums">
+          <div class="card-header">
+            <h3>相册墙</h3>
+            <span>Album</span>
+          </div>
+          <div class="album-grid" id="albumGrid"></div>
+        </article>
+
+        <article class="card" id="messages">
+          <div class="card-header">
+            <h3>同学留言墙</h3>
+            <span>Guestbook</span>
+          </div>
+          <div class="message-form" id="messageForm">
+            <div class="form-grid">
+              <label>昵称（可选）</label>
+              <input id="msgNickname" type="text" placeholder="匿名留空" />
+
+              <label>配文（可选）</label>
+              <input id="msgSubtitle" type="text" placeholder="一句话记录" />
+
+              <label>留言内容</label>
+              <textarea id="msgContent" rows="3" placeholder="写下你的祝福或回忆"></textarea>
+
+              <label>图片（可选）</label>
+              <input id="msgImageFile" type="file" accept="image/*" />
+              <input id="msgImage" type="text" placeholder="或粘贴图片URL" />
+
+              <label class="checkbox">
+                <input id="msgAnonymous" type="checkbox" />
+                匿名发布
+              </label>
+
+              <button id="msgSubmit">提交（需管理员审核）</button>
+              <div class="hint" id="msgHint"></div>
+            </div>
+          </div>
+          <div class="message-list" id="messageList"></div>
+        </article>
+      </section>
+
+      <aside class="sidebar drawer" id="sidebarDrawer" aria-hidden="true">
+        <section class="panel-section card" id="meSection">
+          <h3>我的资料</h3>
+          <div class="form-grid">
+            <label>姓名</label>
+            <input id="meName" type="text" />
+
+            <label>性别</label>
+            <input id="meGender" type="text" placeholder="可选" />
+
+            <label>头像URL</label>
+            <input id="meAvatar" type="text" placeholder="https://" />
+
+            <label>简介</label>
+            <textarea id="meBio" rows="3"></textarea>
+
+            <label>联系方式</label>
+            <input id="meContact" type="text" placeholder="微信/邮箱/手机号" />
+
+            <label>标签</label>
+            <input id="meTags" type="text" placeholder="用逗号分隔" />
+
+            <button id="saveMeBtn">保存资料</button>
+          </div>
+        </section>
+
+        <section class="panel-section card" id="relationSection">
+          <h3>星空关系</h3>
+          <div class="form-grid">
+            <label>关联对象</label>
+            <select id="relationTo"></select>
+
+            <label>关系类型</label>
+            <input id="relationType" type="text" placeholder="同桌/好友/社团等" />
+
+            <label>备注</label>
+            <input id="relationNote" type="text" placeholder="可选" />
+
+            <button id="addRelationBtn">添加关系</button>
+          </div>
+          <div class="relation-list" id="relationList"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</BaseLayout>
