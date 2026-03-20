@@ -108,6 +108,35 @@ body.ready .star-hero {
   width: 100%;
 }
 
+.bottom-nav {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  z-index: 50;
+  display: none;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(221, 205, 188, 0.7);
+  box-shadow: 0 10px 26px rgba(146, 118, 89, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.bottom-nav a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.bottom-nav a:hover {
+  color: var(--accent);
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -747,6 +776,50 @@ textarea {
   }
 }
 
+.star-panel {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: min(280px, 90%);
+  max-height: 220px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(130, 170, 255, 0.35);
+  background: rgba(6, 10, 26, 0.75);
+  color: #e7efff;
+  box-shadow: 0 12px 28px rgba(6, 12, 30, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.star-panel.hidden {
+  display: none;
+}
+
+.star-panel-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.star-panel-meta {
+  font-size: 12px;
+  color: rgba(231, 239, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.star-panel-list {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.star-panel-item {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(120, 170, 255, 0.12);
+  border: 1px solid rgba(120, 170, 255, 0.2);
+}
+
 @media (max-width: 640px) {
   body {
     font-size: 14px;
@@ -767,6 +840,14 @@ textarea {
 
   .status {
     display: none;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .bottom-nav {
+    display: flex;
   }
 
   .hero,
@@ -793,7 +874,7 @@ textarea {
   }
 
   .content {
-    padding: 10px 16px 40px;
+    padding: 10px 16px 90px;
   }
 
   .post-card {
@@ -818,7 +899,7 @@ textarea {
 
   .fab {
     right: 16px;
-    bottom: 16px;
+    bottom: 78px;
     padding: 8px 14px;
   }
 
@@ -826,6 +907,14 @@ textarea {
   #starCanvas {
     height: 48vh;
     min-height: 320px;
+  }
+
+  .star-panel {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-height: 180px;
   }
 
   .modal-content {

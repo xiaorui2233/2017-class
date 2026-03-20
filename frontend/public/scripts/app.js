@@ -11,6 +11,7 @@ const state = {
   dustParticles: [],
   shootingStars: [],
   hoveredId: null,
+  selectedId: null,
   token: localStorage.getItem("class_token") || "",
   me: null,
   lastFrame: performance.now(),
@@ -19,6 +20,10 @@ const state = {
 const canvas = document.getElementById("starCanvas");
 const ctx = canvas?.getContext("2d");
 const hoverCard = document.getElementById("hoverCard");
+const starPanel = document.getElementById("starPanel");
+const starPanelTitle = document.getElementById("starPanelTitle");
+const starPanelMeta = document.getElementById("starPanelMeta");
+const starPanelList = document.getElementById("starPanelList");
 const statusEl = document.getElementById("status");
 const httpsWarning = document.getElementById("httpsWarning");
 const pageStack = document.getElementById("pageStack");
@@ -352,12 +357,17 @@ function drawScene() {
     const pos = state.positions.get(student.id);
     if (!pos) return;
     const flicker = 0.6 + 0.4 * Math.sin(t * 2.2 + student.id.length);
-    const radius = state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
+    const isSelected = state.selectedId === student.id;
+    const radius = isSelected ? 8 : state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = state.hoveredId === student.id ? "#fef9d7" : "rgba(254, 249, 215, 0.85)";
-    ctx.shadowColor = "rgba(242, 167, 255, 0.8)";
-    ctx.shadowBlur = state.hoveredId === student.id ? 16 : 6 + flicker * 8;
+    ctx.fillStyle = isSelected
+      ? "#fff4b0"
+      : state.hoveredId === student.id
+        ? "#fef9d7"
+        : "rgba(254, 249, 215, 0.85)";
+    ctx.shadowColor = isSelected ? "rgba(255, 214, 120, 0.9)" : "rgba(242, 167, 255, 0.8)";
+    ctx.shadowBlur = isSelected ? 20 : state.hoveredId === student.id ? 16 : 6 + flicker * 8;
     ctx.fill();
   });
 }
@@ -389,6 +399,38 @@ function hideHoverCard() {
 
 function getStudentById(id) {
   return state.students.find((s) => s.id === id);
+}
+
+function renderStarPanel(studentId) {
+  if (!starPanel || !starPanelTitle || !starPanelList) return;
+  if (!studentId) {
+    starPanel.classList.add("hidden");
+    starPanelTitle.textContent = "";
+    starPanelMeta.textContent = "";
+    starPanelList.innerHTML = "";
+    return;
+  }
+  starPanel.classList.remove("hidden");
+  const student = getStudentById(studentId);
+  starPanelTitle.textContent = student ? student.name : studentId;
+  starPanelMeta.textContent = student?.tags || student?.contact || "";
+
+  const links = state.relationships.filter(
+    (rel) => rel.from_student_id === studentId || rel.to_student_id === studentId
+  );
+  if (!links.length) {
+    starPanelList.innerHTML = "<div class='star-panel-item'>暂无关系</div>";
+    return;
+  }
+  starPanelList.innerHTML = "";
+  links.forEach((rel) => {
+    const otherId = rel.from_student_id === studentId ? rel.to_student_id : rel.from_student_id;
+    const other = getStudentById(otherId);
+    const item = document.createElement("div");
+    item.className = "star-panel-item";
+    item.textContent = `${other ? other.name : otherId} · ${rel.type || "关系"}${rel.note ? " · " + rel.note : ""}`;
+    starPanelList.appendChild(item);
+  });
 }
 
 function refreshStudentList() {
@@ -556,6 +598,7 @@ async function loadData() {
     state.relationships = relationships;
     refreshStudentList();
     refreshRelations();
+    renderStarPanel(state.selectedId);
     drawScene();
     await loadPendingRelations();
   } catch (err) {
@@ -874,6 +917,28 @@ canvas.addEventListener("mousemove", (event) => {
 canvas.addEventListener("mouseleave", () => {
   state.hoveredId = null;
   hideHoverCard();
+  drawScene();
+});
+
+canvas.addEventListener("click", (event) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  let picked = null;
+  let minDist = 999;
+  for (const student of state.students) {
+    const pos = state.positions.get(student.id);
+    if (!pos) continue;
+    const dx = x - pos.x;
+    const dy = y - pos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 10 && dist < minDist) {
+      picked = student;
+      minDist = dist;
+    }
+  }
+  state.selectedId = picked ? picked.id : null;
+  renderStarPanel(state.selectedId);
   drawScene();
 });
 

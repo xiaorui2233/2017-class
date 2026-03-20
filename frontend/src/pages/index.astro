@@ -15,6 +15,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <div class="starfield">
           <canvas id="starCanvas"></canvas>
           <div class="hover-card" id="hoverCard"></div>
+          <div class="star-panel" id="starPanel">
+            <div class="star-panel-title" id="starPanelTitle">点击星点查看关系</div>
+            <div class="star-panel-meta" id="starPanelMeta"></div>
+            <div class="star-panel-list" id="starPanelList"></div>
+          </div>
           <div class="warning" id="httpsWarning">
             当前页面为 HTTPS，而 API 为 HTTP。浏览器可能阻止请求。
             请使用 HTTP 访问此页面或为后端开启 HTTPS。
