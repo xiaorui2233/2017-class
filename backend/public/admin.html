@@ -1,0 +1,631 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>班级管理后台</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f5f7fb;
+        color: #1f2937;
+        margin: 0;
+        padding: 24px;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      label {
+        font-size: 14px;
+        color: #64748b;
+      }
+      input, textarea, select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-family: inherit;
+        margin: 6px 0 14px;
+      }
+      button {
+        border: none;
+        background: #6366f1;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+      .ghost {
+        background: #e2e8f0;
+        color: #1f2937;
+      }
+      .danger {
+        background: #ef4444;
+      }
+      .hint {
+        color: #64748b;
+        font-size: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .section {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+      }
+      .list {
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+      }
+      .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px dashed #e2e8f0;
+        font-size: 13px;
+      }
+      .list-item:last-child {
+        border-bottom: none;
+      }
+      .upload-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+      }
+      .upload-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+      .upload-card img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        display: block;
+      }
+      .upload-meta {
+        padding: 6px 8px;
+        font-size: 12px;
+        color: #64748b;
+        display: flex;
+        justify-content: space-between;
+      }
+      .inline-btn {
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      @media (max-width: 768px) {
+        .row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>班级管理后台</h1>
+      <p class="hint">输入 ADMIN_KEY 后即可管理：班级主页内容、学生、邀请码。</p>
+
+      <label>ADMIN_KEY</label>
+      <input id="adminKey" type="password" placeholder="请输入 ADMIN_KEY" />
+
+      <div class="section">
+        <h2>班级主页内容</h2>
+        <div class="row">
+          <div>
+            <label>班级大事标题</label>
+            <input id="featuredTitle" type="text" />
+          </div>
+          <div>
+            <label>班级大事日期</label>
+            <input id="featuredDate" type="text" placeholder="2026/06/20" />
+          </div>
+        </div>
+        <label>班级大事描述</label>
+        <textarea id="featuredDesc" rows="3"></textarea>
+
+        <label>活动回顾（每行一条）</label>
+        <textarea id="eventsList" rows="4"></textarea>
+
+        <label>时间轴（每行格式：年份|内容）</label>
+        <textarea id="timelineList" rows="4"></textarea>
+
+        <label>班级动态（每行格式：标题|日期|摘要|封面URL）</label>
+        <textarea id="postsList" rows="4"></textarea>
+
+        <label>相册（每行格式：图片URL|标题|日期）</label>
+        <textarea id="albumsList" rows="4"></textarea>
+
+        <button id="loadContentBtn">加载内容</button>
+        <button id="saveContentBtn">保存内容</button>
+        <span id="contentStatus" class="hint"></span>
+      </div>
+
+      <div class="section">
+        <h2>学生管理</h2>
+        <div class="row">
+          <div>
+            <label>学生列表</label>
+            <div class="list" id="studentList"></div>
+          </div>
+          <div>
+            <label>编辑/新增学生</label>
+            <input id="studentId" type="text" placeholder="学号/ID" />
+            <input id="studentName" type="text" placeholder="姓名" />
+            <input id="studentGender" type="text" placeholder="性别" />
+            <input id="studentAvatar" type="text" placeholder="头像URL" />
+            <textarea id="studentBio" rows="3" placeholder="简介"></textarea>
+            <input id="studentContact" type="text" placeholder="联系方式" />
+            <input id="studentTags" type="text" placeholder="标签" />
+            <button id="createStudentBtn">新增</button>
+            <button id="updateStudentBtn">保存修改</button>
+            <button class="ghost" id="deleteStudentBtn">删除</button>
+            <span id="studentStatus" class="hint"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>账号 Token</h2>
+        <p class="hint">用于找回或分发登录口令（仅管理员可见）。</p>
+        <div class="list" id="tokenList"></div>
+        <span id="tokenStatus" class="hint"></span>
+      </div>
+
+      <div class="section">
+        <h2>邀请码管理</h2>
+        <div class="row">
+          <div>
+            <label>为指定学生生成邀请码（输入学生ID）</label>
+            <input id="inviteStudentId" type="text" placeholder="学号/ID" />
+            <button id="createInviteBtn">生成邀请码</button>
+          </div>
+          <div>
+            <label>批量生成通用邀请码（数量 1-50）</label>
+            <input id="inviteCount" type="number" min="1" max="50" value="5" />
+            <button id="createInviteBatchBtn">批量生成</button>
+          </div>
+        </div>
+        <label>邀请码列表</label>
+        <div class="list" id="inviteList"></div>
+        <span id="inviteStatus" class="hint"></span>
+      </div>
+
+      <div class="section">
+        <h2>留言审核</h2>
+        <div class="list" id="messageList"></div>
+      </div>
+
+      <div class="section">
+        <h2>最近上传图片</h2>
+        <p class="hint">来自留言墙上传的图片（最近 40 条）</p>
+        <div class="upload-grid" id="uploadGrid"></div>
+        <span id="uploadStatus" class="hint"></span>
+      </div>
+    </div>
+
+    <script>
+      const adminKey = document.getElementById("adminKey");
+      const featuredTitle = document.getElementById("featuredTitle");
+      const featuredDate = document.getElementById("featuredDate");
+      const featuredDesc = document.getElementById("featuredDesc");
+      const eventsList = document.getElementById("eventsList");
+      const timelineList = document.getElementById("timelineList");
+      const postsList = document.getElementById("postsList");
+      const albumsList = document.getElementById("albumsList");
+      const contentStatus = document.getElementById("contentStatus");
+
+      const studentList = document.getElementById("studentList");
+      const studentId = document.getElementById("studentId");
+      const studentName = document.getElementById("studentName");
+      const studentGender = document.getElementById("studentGender");
+      const studentAvatar = document.getElementById("studentAvatar");
+      const studentBio = document.getElementById("studentBio");
+      const studentContact = document.getElementById("studentContact");
+      const studentTags = document.getElementById("studentTags");
+      const studentStatus = document.getElementById("studentStatus");
+
+      const inviteStudentId = document.getElementById("inviteStudentId");
+      const inviteCount = document.getElementById("inviteCount");
+      const inviteList = document.getElementById("inviteList");
+      const inviteStatus = document.getElementById("inviteStatus");
+      const messageList = document.getElementById("messageList");
+      const tokenList = document.getElementById("tokenList");
+      const tokenStatus = document.getElementById("tokenStatus");
+      const uploadGrid = document.getElementById("uploadGrid");
+      const uploadStatus = document.getElementById("uploadStatus");
+
+      function saveKey() {
+        const key = adminKey.value.trim();
+        if (key) localStorage.setItem("admin_key", key);
+      }
+
+      function loadKey() {
+        const key = localStorage.getItem("admin_key");
+        if (key) adminKey.value = key;
+      }
+
+      async function api(path, options = {}) {
+        const headers = options.headers || {};
+        headers["x-admin-key"] = adminKey.value.trim();
+        const res = await fetch(path, { ...options, headers });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "请求失败");
+        }
+        return res.json();
+      }
+
+      async function loadContent() {
+        try {
+          const data = await api("/admin/content");
+          featuredTitle.value = data.featured?.title || "";
+          featuredDate.value = data.featured?.date || "";
+          featuredDesc.value = data.featured?.desc || "";
+          eventsList.value = (data.events || []).join("\n");
+          timelineList.value = (data.timeline || [])
+            .map(item => `${item.year}|${item.text}`)
+            .join("\n");
+          postsList.value = (data.posts || [])
+            .map(item => `${item.title || ""}|${item.date || ""}|${item.summary || ""}|${item.cover || ""}`)
+            .join("\n");
+          albumsList.value = (data.albums || [])
+            .map(item => `${item.url || ""}|${item.title || ""}|${item.date || ""}`)
+            .join("\n");
+          contentStatus.textContent = "已加载";
+        } catch (err) {
+          contentStatus.textContent = err.message;
+        }
+      }
+
+      async function saveContent() {
+        try {
+          const payload = {
+            featured: {
+              title: featuredTitle.value.trim(),
+              date: featuredDate.value.trim(),
+              desc: featuredDesc.value.trim()
+            },
+            events: eventsList.value.split("\n").map(s => s.trim()).filter(Boolean),
+            timeline: timelineList.value
+              .split("\n")
+              .map(line => line.trim())
+              .filter(Boolean)
+              .map(line => {
+                const [year, ...rest] = line.split("|");
+                return { year: (year || "").trim(), text: rest.join("|").trim() };
+              }),
+            posts: postsList.value
+              .split("\n")
+              .map(line => line.trim())
+              .filter(Boolean)
+              .map(line => {
+                const [title, date, summary, cover] = line.split("|");
+                return {
+                  title: (title || "").trim(),
+                  date: (date || "").trim(),
+                  summary: (summary || "").trim(),
+                  cover: (cover || "").trim(),
+                };
+              }),
+            albums: albumsList.value
+              .split("\n")
+              .map(line => line.trim())
+              .filter(Boolean)
+              .map(line => {
+                const [url, title, date] = line.split("|");
+                return {
+                  url: (url || "").trim(),
+                  title: (title || "").trim(),
+                  date: (date || "").trim(),
+                };
+              }),
+          };
+          await api("/admin/content", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: payload })
+          });
+          contentStatus.textContent = "已保存";
+        } catch (err) {
+          contentStatus.textContent = err.message;
+        }
+      }
+
+      function fillStudentForm(student) {
+        studentId.value = student.id || "";
+        studentName.value = student.name || "";
+        studentGender.value = student.gender || "";
+        studentAvatar.value = student.avatar || "";
+        studentBio.value = student.bio || "";
+        studentContact.value = student.contact || "";
+        studentTags.value = student.tags || "";
+      }
+
+      async function loadStudents() {
+        try {
+          const data = await api("/admin/students");
+          studentList.innerHTML = "";
+          data.forEach((student) => {
+            const row = document.createElement("div");
+            row.className = "list-item";
+            row.innerHTML = `<span>${student.name} (${student.id})</span><button class="ghost inline-btn">编辑</button>`;
+            row.querySelector("button").addEventListener("click", () => fillStudentForm(student));
+            studentList.appendChild(row);
+          });
+        } catch (err) {
+          studentStatus.textContent = err.message;
+        }
+      }
+
+      async function createStudent() {
+        try {
+          const payload = {
+            id: studentId.value.trim(),
+            name: studentName.value.trim(),
+            gender: studentGender.value.trim() || null,
+            avatar: studentAvatar.value.trim() || null,
+            bio: studentBio.value.trim() || null,
+            contact: studentContact.value.trim() || null,
+            tags: studentTags.value.trim() || null,
+          };
+          await api("/admin/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          studentStatus.textContent = "已新增";
+          await loadStudents();
+        } catch (err) {
+          studentStatus.textContent = err.message;
+        }
+      }
+
+      async function updateStudent() {
+        try {
+          const payload = {
+            name: studentName.value.trim(),
+            gender: studentGender.value.trim() || null,
+            avatar: studentAvatar.value.trim() || null,
+            bio: studentBio.value.trim() || null,
+            contact: studentContact.value.trim() || null,
+            tags: studentTags.value.trim() || null,
+          };
+          await api(`/admin/students/${studentId.value.trim()}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          studentStatus.textContent = "已更新";
+          await loadStudents();
+        } catch (err) {
+          studentStatus.textContent = err.message;
+        }
+      }
+
+      async function deleteStudent() {
+        try {
+          await api(`/admin/students/${studentId.value.trim()}`, { method: "DELETE" });
+          studentStatus.textContent = "已删除";
+          await loadStudents();
+        } catch (err) {
+          studentStatus.textContent = err.message;
+        }
+      }
+
+      async function loadInvites() {
+        try {
+          const data = await api("/admin/invites");
+          inviteList.innerHTML = "";
+          data.forEach((inv) => {
+            const row = document.createElement("div");
+            row.className = "list-item";
+            const used = inv.used_at ? `已使用 (${inv.used_by_student_id || ""})` : "未使用";
+            row.innerHTML = `
+              <span>${inv.code} · ${inv.student_id || "通用"} · ${used}</span>
+              <div>
+                <button class="ghost inline-btn" data-copy="${inv.code}">复制</button>
+                <button class="danger inline-btn" data-del="${inv.code}">作废</button>
+              </div>
+            `;
+            row.querySelector("[data-copy]").addEventListener("click", async (e) => {
+              const code = e.target.getAttribute("data-copy");
+              await navigator.clipboard.writeText(code);
+              inviteStatus.textContent = `已复制邀请码 ${code}`;
+            });
+            row.querySelector("[data-del]").addEventListener("click", async (e) => {
+              const code = e.target.getAttribute("data-del");
+              await api(`/admin/invites/${code}`, { method: "DELETE" });
+              inviteStatus.textContent = `已作废 ${code}`;
+              await loadInvites();
+            });
+            inviteList.appendChild(row);
+          });
+        } catch (err) {
+          inviteStatus.textContent = err.message;
+        }
+      }
+
+      async function loadTokens() {
+        try {
+          const data = await api("/admin/accounts");
+          tokenList.innerHTML = "";
+          data.forEach((row) => {
+            const item = document.createElement("div");
+            item.className = "list-item";
+            const token = row.token || "未注册";
+            item.innerHTML = `
+              <span>${row.name || ""} (${row.id}) · ${token}</span>
+              <div>
+                <button class="ghost inline-btn" data-copy="${row.token || ""}">复制</button>
+              </div>
+            `;
+            item.querySelector("button").addEventListener("click", async (e) => {
+              const value = e.target.getAttribute("data-copy");
+              if (!value) return;
+              await navigator.clipboard.writeText(value);
+              tokenStatus.textContent = `已复制 ${row.name || row.id} 的 Token`;
+            });
+            tokenList.appendChild(item);
+          });
+          tokenStatus.textContent = `已加载 ${data.length} 条记录`;
+        } catch (err) {
+          tokenStatus.textContent = err.message;
+        }
+      }
+
+      async function createInviteForStudent() {
+        try {
+          const payload = { studentId: inviteStudentId.value.trim() };
+          const res = await api("/admin/invites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          inviteStatus.textContent = `已生成：${res.invites.map(i => i.code).join(", ")}`;
+          await loadInvites();
+        } catch (err) {
+          inviteStatus.textContent = err.message;
+        }
+      }
+
+      async function createInviteBatch() {
+        try {
+          const payload = { count: Number(inviteCount.value || 1) };
+          const res = await api("/admin/invites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          inviteStatus.textContent = `已生成 ${res.invites.length} 个邀请码`;
+          await loadInvites();
+        } catch (err) {
+          inviteStatus.textContent = err.message;
+        }
+      }
+
+      async function loadMessages() {
+        try {
+          const data = await api("/admin/messages");
+          messageList.innerHTML = "";
+          data.forEach((msg) => {
+            const row = document.createElement("div");
+            row.className = "list-item";
+            row.innerHTML = `
+              <span>#${msg.id} · ${msg.status} · ${msg.student_id} · ${msg.content.slice(0, 20)}</span>
+              <div>
+                <button class="ghost inline-btn" data-approve="${msg.id}">通过</button>
+                <button class="ghost inline-btn" data-reject="${msg.id}">拒绝</button>
+                <button class="danger inline-btn" data-del="${msg.id}">删除</button>
+              </div>
+            `;
+            row.querySelector("[data-approve]").addEventListener("click", async (e) => {
+              await api(`/admin/messages/${e.target.dataset.approve}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "approved" })
+              });
+              await loadMessages();
+            });
+            row.querySelector("[data-reject]").addEventListener("click", async (e) => {
+              await api(`/admin/messages/${e.target.dataset.reject}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "rejected" })
+              });
+              await loadMessages();
+            });
+            row.querySelector("[data-del]").addEventListener("click", async (e) => {
+              await api(`/admin/messages/${e.target.dataset.del}`, { method: "DELETE" });
+              await loadMessages();
+            });
+            messageList.appendChild(row);
+          });
+        } catch (err) {
+          inviteStatus.textContent = err.message;
+        }
+      }
+
+      async function loadUploads() {
+        try {
+          const data = await api("/admin/uploads");
+          uploadGrid.innerHTML = "";
+          data.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "upload-card";
+            card.innerHTML = `
+              <img src="${item.image_url}" alt="upload" />
+              <div class="upload-meta">
+                <span>${item.student_id || ""}</span>
+                <span>${(item.created_at || "").split("T")[0]}</span>
+              </div>
+            `;
+            uploadGrid.appendChild(card);
+          });
+          uploadStatus.textContent = `已加载 ${data.length} 张`;
+        } catch (err) {
+          uploadStatus.textContent = err.message;
+        }
+      }
+
+      document.getElementById("loadContentBtn").addEventListener("click", () => {
+        saveKey();
+        loadContent();
+      });
+      document.getElementById("saveContentBtn").addEventListener("click", saveContent);
+      document.getElementById("createStudentBtn").addEventListener("click", createStudent);
+      document.getElementById("updateStudentBtn").addEventListener("click", updateStudent);
+      document.getElementById("deleteStudentBtn").addEventListener("click", deleteStudent);
+      document.getElementById("createInviteBtn").addEventListener("click", createInviteForStudent);
+      document.getElementById("createInviteBatchBtn").addEventListener("click", createInviteBatch);
+
+      adminKey.addEventListener("change", () => {
+        saveKey();
+        loadContent();
+        loadStudents();
+        loadInvites();
+        loadMessages();
+        loadTokens();
+        loadUploads();
+      });
+
+      loadKey();
+      if (adminKey.value.trim()) {
+        loadContent();
+        loadStudents();
+        loadInvites();
+        loadMessages();
+        loadTokens();
+        loadUploads();
+      }
+
+      setInterval(() => {
+        if (!adminKey.value.trim()) return;
+        loadContent();
+        loadStudents();
+        loadInvites();
+        loadMessages();
+        loadTokens();
+        loadUploads();
+      }, 20000);
+    </script>
+  </body>
+</html>
