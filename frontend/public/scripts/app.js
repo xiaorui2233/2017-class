@@ -56,6 +56,7 @@ const scrollProfile = document.getElementById("scrollProfile");
 const openProfile = document.getElementById("openProfile");
 const closeProfile = document.getElementById("closeProfile");
 const sidebarDrawer = document.getElementById("sidebarDrawer");
+const navLinks = document.querySelectorAll(".nav a");
 
 const featuredTitle = document.getElementById("featuredTitle");
 const featuredDate = document.getElementById("featuredDate");
@@ -868,6 +869,18 @@ if (scrollProfile) {
   });
 }
 
+navLinks.forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const href = link.getAttribute("href") || "";
+    if (!href.startsWith("#")) return;
+    const target = document.querySelector(href);
+    if (!target || !pageStack) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    history.replaceState(null, "", href);
+  });
+});
+
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeModal();
@@ -891,6 +904,7 @@ async function init() {
   } else {
     setStatus("请登录后编辑自己的星光资料");
   }
+  document.body.classList.add("ready");
 }
 
 init();
@@ -902,4 +916,23 @@ window.addEventListener("load", () => {
     forceHomeView();
   }
 });
+
+// Reveal animations
+const revealTargets = document.querySelectorAll(
+  ".card, .hero-content, .hero-card, .post-card, .album-item, .message-card"
+);
+revealTargets.forEach((el) => el.classList.add("reveal"));
+
+const observer = new IntersectionObserver(
+  (entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+      }
+    });
+  },
+  { threshold: 0.12 }
+);
+
+revealTargets.forEach((el) => observer.observe(el));
 
