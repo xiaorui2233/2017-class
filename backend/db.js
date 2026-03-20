@@ -1,7 +1,17 @@
 ﻿const path = require("path");
+const fs = require("fs");
 const sqlite3 = require("sqlite3").verbose();
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, "data", "class.db");
+const defaultDbPath = path.join(__dirname, "data", "class.db");
+const dbPath =
+  process.env.DB_PATH ||
+  (process.env.RENDER ? "/var/data/class.db" : defaultDbPath);
+
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
@@ -87,19 +97,6 @@ async function initDb() {
     )`
   );
 
-  // Backward-compatible migrations
-  const addColumnIfMissing = async (columnSql) => {
-    try {
-      await run(columnSql);
-    } catch (err) {
-      // ignore duplicate column errors
-    }
-  };
-  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN status TEXT DEFAULT 'accepted'");
-  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN requested_by TEXT");
-  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN approved_at TEXT");
-  await run("UPDATE relationships SET status = 'accepted' WHERE status IS NULL");
-
   await run(
     `CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,6 +112,19 @@ async function initDb() {
       FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
     )`
   );
+
+  // Backward-compatible migrations
+  const addColumnIfMissing = async (columnSql) => {
+    try {
+      await run(columnSql);
+    } catch (err) {
+      // ignore duplicate column errors
+    }
+  };
+  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN status TEXT DEFAULT 'accepted'");
+  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN requested_by TEXT");
+  await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN approved_at TEXT");
+  await run("UPDATE relationships SET status = 'accepted' WHERE status IS NULL");
 }
 
 module.exports = {

@@ -37,4 +37,4 @@ jobs:
             exit 0
           fi
           git commit -m "Upload image"
-          git push origin HEAD:${{ github.event.client_payload.branch || 'main' }}
+          git push origin HEAD:${{ github.event.client_payload.branch || 'master' }}

@@ -35,6 +35,13 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Copy uploads into frontend public
+        run: |
+          if [ -d "assets/uploads" ]; then
+            mkdir -p "frontend/public/assets/uploads"
+            cp -r "assets/uploads/." "frontend/public/assets/uploads/"
+          fi
+
       - name: Build
         working-directory: frontend
         run: npm run build
