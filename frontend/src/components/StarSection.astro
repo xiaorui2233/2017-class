@@ -1,0 +1,29 @@
+---
+const hint = Astro.props.hint || "上滑进入星空 · 下滑回到页面内容";
+---
+<section class="star-hero snap-section" id="constellation">
+  <div class="star-hero-inner">
+    <div>
+      <div class="hero-tag">Graduation Constellation</div>
+      <h1>2017级1班 · 星空关系图</h1>
+      <p>每位同学都是一颗星，连线构成我们共同的星座。</p>
+      <div class="pull-hint">{hint}</div>
+    </div>
+    <div class="starfield">
+      <canvas id="starCanvas"></canvas>
+      <div class="hover-card" id="hoverCard"></div>
+      <div class="star-panel" id="starPanel">
+        <div class="star-panel-header">
+          <div class="star-panel-title" id="starPanelTitle"></div>
+          <button class="star-panel-close" id="starPanelClose" aria-label="关闭">×</button>
+        </div>
+        <div class="star-panel-meta" id="starPanelMeta"></div>
+        <div class="star-panel-list" id="starPanelList"></div>
+      </div>
+      <div class="warning" id="httpsWarning">
+        当前页面为 HTTPS，而 API 为 HTTP。浏览器可能阻止请求。
+        请使用 HTTP 访问此页面或为后端开启 HTTPS。
+      </div>
+    </div>
+  </div>
+</section>

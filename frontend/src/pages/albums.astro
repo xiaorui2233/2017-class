@@ -1,0 +1,29 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import StarSection from "../components/StarSection.astro";
+---
+
+<BaseLayout title="2017级1班 · 相册墙">
+  <div id="pageStack" class="hidden">
+    <StarSection hint="上滑进入星空 · 下滑回到相册墙" />
+    <section class="hero" id="pageMain">
+      <div class="hero-content">
+        <div class="hero-tag">Album</div>
+        <h2>相册墙</h2>
+        <p>定格每一次相遇与告别。</p>
+      </div>
+    </section>
+
+    <main class="content">
+      <section class="feed">
+        <article class="card" id="albums">
+          <div class="card-header">
+            <h3>相册墙</h3>
+            <span>Album</span>
+          </div>
+          <div class="album-grid" id="albumGrid"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+</BaseLayout>

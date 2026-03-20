@@ -1,0 +1,86 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import StarSection from "../components/StarSection.astro";
+---
+
+<BaseLayout title="2017级1班 · 班级动态">
+  <div id="pageStack" class="hidden">
+    <StarSection hint="上滑进入星空 · 下滑回到班级动态" />
+    <section class="hero" id="pageMain">
+      <div class="hero-content">
+        <div class="hero-tag">Class Moments</div>
+        <h2>班级动态与活动回顾</h2>
+        <p>记录我们的班级大事、最新动态与留言墙。</p>
+      </div>
+      <div class="hero-card">
+        <h3>Class Highlights</h3>
+        <p>这里汇总班级大事与同学留言，温暖而明亮。</p>
+      </div>
+    </section>
+
+    <main class="content">
+      <section class="feed">
+        <article class="card featured">
+          <div class="card-header">
+            <h3>班级大事</h3>
+            <span>Featured</span>
+          </div>
+          <h4 id="featuredTitle"></h4>
+          <div class="meta" id="featuredDate"></div>
+          <p id="featuredDesc"></p>
+        </article>
+
+        <article class="card" id="posts">
+          <div class="card-header">
+            <h3>班级动态</h3>
+            <span>Moments</span>
+          </div>
+          <div class="post-list" id="postList"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <h3>活动回顾</h3>
+            <span>Latest</span>
+          </div>
+          <ul class="event-list" id="eventsList"></ul>
+        </article>
+
+        <article class="card" id="messages">
+          <div class="card-header">
+            <h3>同学留言墙</h3>
+            <span>Guestbook</span>
+          </div>
+          <button class="ghost toggle-btn" id="toggleMessages">展开留言区</button>
+          <div class="message-panel collapsed" id="messagePanel">
+            <div class="message-form" id="messageForm">
+              <div class="form-grid">
+                <label>昵称（可选）</label>
+                <input id="msgNickname" type="text" placeholder="匿名留空" />
+
+                <label>配文（可选）</label>
+                <input id="msgSubtitle" type="text" placeholder="一句话记录" />
+
+                <label>留言内容</label>
+                <textarea id="msgContent" rows="3" placeholder="写下你的祝福或回忆"></textarea>
+
+                <label>图片（可选）</label>
+                <input id="msgImageFile" type="file" accept="image/*" />
+                <input id="msgImage" type="text" placeholder="或粘贴图片URL" />
+
+                <label class="checkbox">
+                  <input id="msgAnonymous" type="checkbox" />
+                  匿名发布
+                </label>
+
+                <button id="msgSubmit">提交（需管理员审核）</button>
+                <div class="hint" id="msgHint"></div>
+              </div>
+            </div>
+            <div class="message-list" id="messageList"></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</BaseLayout>

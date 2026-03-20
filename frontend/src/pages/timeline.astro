@@ -1,0 +1,29 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import StarSection from "../components/StarSection.astro";
+---
+
+<BaseLayout title="2017级1班 · 时间轴">
+  <div id="pageStack" class="hidden">
+    <StarSection hint="上滑进入星空 · 下滑回到时间轴" />
+    <section class="hero" id="pageMain">
+      <div class="hero-content">
+        <div class="hero-tag">Timeline</div>
+        <h2>班级时间轴</h2>
+        <p>把我们的高光时刻串成一条时间线。</p>
+      </div>
+    </section>
+
+    <main class="content">
+      <section class="feed">
+        <article class="card" id="timeline">
+          <div class="card-header">
+            <h3>时间轴</h3>
+            <span>Timeline</span>
+          </div>
+          <div class="timeline" id="timelineList"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+</BaseLayout>

@@ -1,0 +1,77 @@
+﻿---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import StarSection from "../components/StarSection.astro";
+---
+
+<BaseLayout title="2017级1班 · 学生列表">
+  <div id="pageStack" class="hidden">
+    <StarSection hint="上滑进入星空 · 下滑回到学生列表" />
+    <section class="hero" id="pageMain">
+      <div class="hero-content">
+        <div class="hero-tag">Students</div>
+        <h2>学生列表</h2>
+        <p>星光档案与个人信息。</p>
+      </div>
+    </section>
+
+    <main class="content">
+      <section class="feed">
+        <article class="card" id="students">
+          <div class="card-header">
+            <h3>学生列表</h3>
+            <span>Students</span>
+          </div>
+          <div class="student-list" id="studentList"></div>
+        </article>
+      </section>
+
+      <aside class="sidebar drawer" id="sidebarDrawer" aria-hidden="true">
+        <section class="panel-section card" id="meSection">
+          <h3>我的资料</h3>
+          <div class="form-grid">
+            <label>姓名</label>
+            <input id="meName" type="text" />
+
+            <label>性别</label>
+            <input id="meGender" type="text" placeholder="可选" />
+
+            <label>头像URL</label>
+            <input id="meAvatar" type="text" placeholder="https://" />
+
+            <label>简介</label>
+            <textarea id="meBio" rows="3"></textarea>
+
+            <label>联系方式</label>
+            <input id="meContact" type="text" placeholder="微信/邮箱/手机号" />
+
+            <label>标签</label>
+            <input id="meTags" type="text" placeholder="用逗号分隔" />
+
+            <button id="saveMeBtn">保存资料</button>
+          </div>
+        </section>
+
+        <section class="panel-section card" id="relationSection">
+          <h3>星空关系</h3>
+          <div class="form-grid">
+            <label>关联对象</label>
+            <select id="relationTo"></select>
+
+            <label>关系类型</label>
+            <input id="relationType" type="text" placeholder="同桌/好友/社团等" />
+
+            <label>备注</label>
+            <input id="relationNote" type="text" placeholder="可选" />
+
+            <button id="addRelationBtn">添加关系</button>
+          </div>
+          <div class="relation-list" id="relationList"></div>
+          <div class="relation-requests">
+            <h4>关系请求</h4>
+            <div id="relationRequests"></div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+</BaseLayout>
