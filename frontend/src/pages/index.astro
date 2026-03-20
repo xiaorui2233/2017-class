@@ -96,7 +96,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             <h3>同学留言墙</h3>
             <span>Guestbook</span>
           </div>
-          <div class="message-form" id="messageForm">
+          <button class="ghost toggle-btn" id="toggleMessages">展开留言区</button>
+          <div class="message-panel collapsed" id="messagePanel">
+            <div class="message-form" id="messageForm">
             <div class="form-grid">
               <label>昵称（可选）</label>
               <input id="msgNickname" type="text" placeholder="匿名留空" />
@@ -120,7 +122,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <div class="hint" id="msgHint"></div>
             </div>
           </div>
-          <div class="message-list" id="messageList"></div>
+            <div class="message-list" id="messageList"></div>
+          </div>
         </article>
       </section>
 

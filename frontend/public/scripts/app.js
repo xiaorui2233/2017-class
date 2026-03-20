@@ -80,6 +80,8 @@ const msgImage = document.getElementById("msgImage");
 const msgAnonymous = document.getElementById("msgAnonymous");
 const msgSubmit = document.getElementById("msgSubmit");
 const msgHint = document.getElementById("msgHint");
+const toggleMessages = document.getElementById("toggleMessages");
+const messagePanel = document.getElementById("messagePanel");
 
 if ("scrollRestoration" in history) {
   history.scrollRestoration = "manual";
@@ -816,6 +818,15 @@ loginBtn.addEventListener("click", () => loginWithToken(loginToken.value.trim())
 saveMeBtn.addEventListener("click", saveMe);
 addRelationBtn.addEventListener("click", addRelation);
 msgSubmit.addEventListener("click", submitMessage);
+
+if (toggleMessages && messagePanel) {
+  toggleMessages.addEventListener("click", () => {
+    const isCollapsed = messagePanel.classList.contains("collapsed");
+    messagePanel.classList.toggle("collapsed", !isCollapsed);
+    messagePanel.classList.toggle("expanded", isCollapsed);
+    toggleMessages.textContent = isCollapsed ? "收起留言区" : "展开留言区";
+  });
+}
 
 openAuth.addEventListener("click", openModal);
 closeAuth.addEventListener("click", closeModal);

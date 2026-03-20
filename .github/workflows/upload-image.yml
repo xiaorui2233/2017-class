@@ -14,13 +14,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Write file
+      - name: Fetch file
         run: |
-          node -e "const fs=require('fs'); const path=require('path'); const p=process.env.UPLOAD_PATH || 'assets/uploads'; const name=process.env.FILE_NAME; const buf=Buffer.from(process.env.CONTENT_BASE64,'base64'); const dir=path.join(process.cwd(), p); fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,name), buf);"
+          if [ -z "${TEMP_URL}" ]; then
+            echo "temp_url missing" && exit 1
+          fi
+          mkdir -p "${UPLOAD_PATH}"
+          curl -L "${TEMP_URL}?token=${TEMP_TOKEN}" -o "${UPLOAD_PATH}/${FILE_NAME}"
         env:
           UPLOAD_PATH: ${{ github.event.client_payload.upload_path }}
           FILE_NAME: ${{ github.event.client_payload.filename }}
-          CONTENT_BASE64: ${{ github.event.client_payload.content_base64 }}
+          TEMP_URL: ${{ github.event.client_payload.temp_url }}
+          TEMP_TOKEN: ${{ github.event.client_payload.temp_token }}
 
       - name: Commit and push
         run: |

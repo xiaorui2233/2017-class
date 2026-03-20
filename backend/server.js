@@ -8,6 +8,7 @@ const multer = require("multer");
 const { initDb, run, get, all } = require("./db");
 
 const app = express();
+app.set("trust proxy", true);
 const PORT = process.env.PORT || 4000;
 const ADMIN_KEY = process.env.ADMIN_KEY || "";
 const REQUIRE_INVITE = (process.env.REQUIRE_INVITE || "true").toLowerCase() !== "false";
@@ -17,6 +18,8 @@ const GITHUB_REPO = process.env.GITHUB_REPO || "";
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 const GITHUB_UPLOAD_PATH = process.env.GITHUB_UPLOAD_PATH || "assets/uploads";
 const GITHUB_PAT = process.env.GITHUB_PAT || "";
+const uploadsTempDir = path.join(__dirname, "uploads_temp");
+const tempTokens = new Map();
 const UPLOAD_PROVIDER = (process.env.UPLOAD_PROVIDER || "local").toLowerCase();
 const FILE_ENCRYPT_KEY = process.env.FILE_ENCRYPT_KEY || "";
 const uploadsDir = path.join(__dirname, "uploads");
@@ -37,6 +40,12 @@ function ensureUploadsDir() {
   }
 }
 
+function ensureTempDir() {
+  if (!fs.existsSync(uploadsTempDir)) {
+    fs.mkdirSync(uploadsTempDir, { recursive: true });
+  }
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -51,6 +60,28 @@ function generateStudentId() {
 
 function generateInviteCode() {
   return crypto.randomBytes(6).toString("hex");
+}
+
+function createTempUpload(buffer, originalName, mime) {
+  ensureTempDir();
+  const id = `${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
+  const token = crypto.randomBytes(18).toString("hex");
+  const filePath = path.join(uploadsTempDir, `${id}.bin`);
+  fs.writeFileSync(filePath, buffer);
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+  tempTokens.set(id, { token, mime, originalName, filePath, expiresAt });
+  return { id, token };
+}
+
+function getTempUpload(id, token) {
+  const entry = tempTokens.get(id);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    tempTokens.delete(id);
+    return null;
+  }
+  if (entry.token !== token) return null;
+  return entry;
 }
 
 function getEncryptKey() {
@@ -98,7 +129,7 @@ function writeContent(content) {
   fs.writeFileSync(contentPath, JSON.stringify(content, null, 2), "utf8");
 }
 
-async function dispatchUploadToGitHub({ filename, contentBase64 }) {
+async function dispatchUploadToGitHub({ filename, tempUrl, tempToken }) {
   if (!GITHUB_OWNER || !GITHUB_REPO || !GITHUB_PAT) {
     throw new Error("GitHub upload is not configured");
   }
@@ -106,7 +137,8 @@ async function dispatchUploadToGitHub({ filename, contentBase64 }) {
     event_type: "upload_image",
     client_payload: {
       filename,
-      content_base64: contentBase64,
+      temp_url: tempUrl,
+      temp_token: tempToken,
       upload_path: GITHUB_UPLOAD_PATH,
       branch: GITHUB_BRANCH,
     },
@@ -472,14 +504,15 @@ app.post("/upload", authMiddleware, upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "only image files are allowed" });
     }
 
-    if (UPLOAD_PROVIDER === "github") {
-      const ext = path.extname(req.file.originalname) || ".jpg";
-      const filename = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
-      const contentBase64 = req.file.buffer.toString("base64");
-      await dispatchUploadToGitHub({ filename, contentBase64 });
-      const url = `https://${GITHUB_OWNER}.github.io/${GITHUB_REPO}/${GITHUB_UPLOAD_PATH}/${filename}`;
-      return res.json({ url, filename, provider: "github" });
-    }
+  if (UPLOAD_PROVIDER === "github") {
+    const ext = path.extname(req.file.originalname) || ".jpg";
+    const filename = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
+    const temp = createTempUpload(req.file.buffer, req.file.originalname, req.file.mimetype);
+    const tempUrl = `${req.protocol}://${req.get("host")}/upload-temp/${temp.id}`;
+    await dispatchUploadToGitHub({ filename, tempUrl, tempToken: temp.token });
+    const url = `https://${GITHUB_OWNER}.github.io/${GITHUB_REPO}/${GITHUB_UPLOAD_PATH}/${filename}`;
+    return res.json({ url, filename, provider: "github" });
+  }
 
     ensureUploadsDir();
     const id = `${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
@@ -496,6 +529,23 @@ app.post("/upload", authMiddleware, upload.single("file"), async (req, res) => {
     fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), "utf8");
     const url = `${req.protocol}://${req.get("host")}/uploads/${id}`;
     return res.json({ url, id, provider: "local" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || "Server error" });
+  }
+});
+
+app.get("/upload-temp/:id", (req, res) => {
+  try {
+    const token = req.query.token || "";
+    const entry = getTempUpload(req.params.id, String(token));
+    if (!entry) return res.status(404).json({ error: "Not found" });
+    res.setHeader("Content-Type", entry.mime || "application/octet-stream");
+    res.setHeader("Cache-Control", "no-store");
+    const data = fs.readFileSync(entry.filePath);
+    fs.unlinkSync(entry.filePath);
+    tempTokens.delete(req.params.id);
+    return res.send(data);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message || "Server error" });

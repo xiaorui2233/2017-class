@@ -27,6 +27,12 @@ body {
   overflow: hidden;
 }
 
+body.ready .topbar,
+body.ready .hero,
+body.ready .star-hero {
+  animation: fadeUp 520ms ease both;
+}
+
 #app {
   display: flex;
   flex-direction: column;
@@ -232,6 +238,21 @@ textarea {
   animation: fadeUp 520ms ease both;
 }
 
+.float-soft {
+  animation: floatSoft 6s ease-in-out infinite;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 520ms ease, transform 520ms ease;
+}
+
 .card::after {
   content: "";
   position: absolute;
@@ -366,6 +387,27 @@ textarea {
 
 .message-form {
   margin-bottom: 16px;
+}
+
+.toggle-btn {
+  margin-bottom: 12px;
+}
+
+.message-panel {
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.message-panel.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.message-panel.expanded {
+  max-height: 2000px;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .message-list {
@@ -641,6 +683,25 @@ textarea {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes floatSoft {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
