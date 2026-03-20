@@ -8,6 +8,8 @@ const state = {
   positions: new Map(),
   velocities: new Map(),
   backgroundStars: [],
+  dustParticles: [],
+  shootingStars: [],
   hoveredId: null,
   token: localStorage.getItem("class_token") || "",
   me: null,
@@ -171,12 +173,21 @@ function resizeCanvas() {
 function buildBackgroundStars() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
-  state.backgroundStars = Array.from({ length: 240 }, () => ({
+  state.backgroundStars = Array.from({ length: 260 }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
     r: 0.6 + Math.random() * 1.8,
     phase: Math.random() * Math.PI * 2,
+    hue: 210 + Math.random() * 40,
   }));
+  state.dustParticles = Array.from({ length: 80 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    r: 6 + Math.random() * 14,
+    a: 0.05 + Math.random() * 0.08,
+    drift: 0.02 + Math.random() * 0.05,
+  }));
+  state.shootingStars = [];
 }
 
 function initPositions() {
@@ -261,13 +272,63 @@ function drawScene() {
   ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
   initPositions();
   const t = performance.now() / 1000;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  // deep space backdrop glow
+  const bg = ctx.createRadialGradient(width * 0.2, height * 0.2, 20, width * 0.5, height * 0.5, Math.max(width, height));
+  bg.addColorStop(0, "rgba(40, 70, 140, 0.35)");
+  bg.addColorStop(0.45, "rgba(15, 25, 60, 0.2)");
+  bg.addColorStop(1, "rgba(4, 6, 16, 0.9)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  // nebula dust
+  state.dustParticles.forEach((dust, idx) => {
+    const offset = (t * dust.drift * 10 + idx) % width;
+    const x = (dust.x + offset) % width;
+    const y = (dust.y + Math.sin(t * dust.drift + idx) * 6 + height) % height;
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, dust.r);
+    gradient.addColorStop(0, `rgba(120, 170, 255, ${dust.a})`);
+    gradient.addColorStop(1, "rgba(120, 170, 255, 0)");
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, dust.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
 
   state.backgroundStars.forEach((star) => {
     const twinkle = 0.4 + 0.6 * Math.sin(t * 1.2 + star.phase);
     ctx.beginPath();
     ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(200, 220, 255, ${0.12 + twinkle * 0.2})`;
+    ctx.fillStyle = `hsla(${star.hue}, 70%, 85%, ${0.12 + twinkle * 0.25})`;
     ctx.fill();
+  });
+
+  // random shooting stars
+  if (Math.random() < 0.01 && state.shootingStars.length < 2) {
+    state.shootingStars.push({
+      x: Math.random() * width,
+      y: Math.random() * height * 0.5,
+      vx: 6 + Math.random() * 4,
+      vy: 3 + Math.random() * 2,
+      life: 0,
+    });
+  }
+  state.shootingStars = state.shootingStars.filter((s) => s.life < 1.2);
+  state.shootingStars.forEach((s) => {
+    s.life += 0.02;
+    s.x += s.vx;
+    s.y += s.vy;
+    const trail = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * 10, s.y - s.vy * 10);
+    trail.addColorStop(0, "rgba(210, 235, 255, 0.8)");
+    trail.addColorStop(1, "rgba(210, 235, 255, 0)");
+    ctx.strokeStyle = trail;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(s.x - s.vx * 10, s.y - s.vy * 10);
+    ctx.stroke();
   });
 
   ctx.save();
@@ -276,11 +337,13 @@ function drawScene() {
     const from = state.positions.get(rel.from_student_id);
     const to = state.positions.get(rel.to_student_id);
     if (!from || !to) return;
-    const pulse = 0.3 + 0.7 * Math.sin(t * 1.2 + index);
+    const pulse = 0.3 + 0.7 * Math.sin(t * 1.1 + index);
+    const mx = (from.x + to.x) / 2;
+    const my = (from.y + to.y) / 2 - 20;
     ctx.strokeStyle = `rgba(141, 211, 255, ${0.15 + pulse * 0.35})`;
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    ctx.quadraticCurveTo(mx, my, to.x, to.y);
     ctx.stroke();
   });
   ctx.restore();
@@ -289,12 +352,12 @@ function drawScene() {
     const pos = state.positions.get(student.id);
     if (!pos) return;
     const flicker = 0.6 + 0.4 * Math.sin(t * 2.2 + student.id.length);
-    const radius = state.hoveredId === student.id ? 6 : 3 + flicker * 1.5;
+    const radius = state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
     ctx.fillStyle = state.hoveredId === student.id ? "#fef9d7" : "rgba(254, 249, 215, 0.85)";
     ctx.shadowColor = "rgba(242, 167, 255, 0.8)";
-    ctx.shadowBlur = state.hoveredId === student.id ? 12 : 4 + flicker * 6;
+    ctx.shadowBlur = state.hoveredId === student.id ? 16 : 6 + flicker * 8;
     ctx.fill();
   });
 }

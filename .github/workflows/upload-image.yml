@@ -38,3 +38,13 @@ jobs:
           fi
           git commit -m "Upload image"
           git push origin HEAD:${{ github.event.client_payload.branch || 'master' }}
+
+      - name: Trigger Pages deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy-astro.yml/dispatches \
+            -d '{"ref":"master"}'
