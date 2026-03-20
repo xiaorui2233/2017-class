@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Fetch file
         run: |
@@ -37,7 +39,9 @@ jobs:
             exit 0
           fi
           git commit -m "Upload image"
-          git push origin HEAD:${{ github.event.client_payload.branch || 'master' }}
+          BRANCH="${{ github.event.client_payload.branch || 'master' }}"
+          git pull --rebase origin "${BRANCH}"
+          git push origin HEAD:"${BRANCH}"
 
       - name: Trigger Pages deploy
         env:
