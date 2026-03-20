@@ -296,6 +296,16 @@ function drawScene() {
   });
 }
 
+function animate() {
+  if (!canvas || !ctx) return;
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - state.lastFrame) / 1000);
+  state.lastFrame = now;
+  applyForces(dt);
+  drawScene();
+  requestAnimationFrame(animate);
+}
+
 function showHoverCard(student, x, y) {
   hoverCard.innerHTML = `
     <strong>${student.name}</strong><br />
