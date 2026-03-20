@@ -1,5 +1,5 @@
 ﻿const CONFIG = {
-  API_BASE_URL: "https://two017-class.onrender.com/",
+  API_BASE_URL: "https://two017-class.onrender.com",
 };
 
 const state = {
@@ -92,7 +92,7 @@ if (pageStack) {
 document.body.classList.add("constellation-lock");
 
 function apiUrl(path) {
-  return `${CONFIG.API_BASE_URL}${path}`;
+  return `${CONFIG.API_BASE_URL.replace(/\/+$/, "")}${path}`;
 }
 
 function setStatus(text) {
@@ -891,3 +891,4 @@ window.addEventListener("load", () => {
     forceHomeView();
   }
 });
+

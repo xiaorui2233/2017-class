@@ -1,6 +1,4 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Source+Serif+4:wght@400;600&display=swap");
-
-:root {
+﻿:root {
   --bg-1: #f6efe6;
   --bg-2: #f9f5ee;
   --accent: #c08b5c;
@@ -22,7 +20,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Source Serif 4", "Times New Roman", serif;
+  font-family: "Times New Roman", "SimSun", "Songti SC", "STSong", serif;
   color: var(--text);
   background: radial-gradient(circle at top, #fff7ec 0%, var(--bg-1) 45%, var(--bg-2) 100%);
   height: 100vh;
@@ -69,7 +67,7 @@ body {
 .brand {
   font-weight: 700;
   letter-spacing: 0.5px;
-  font-family: "Playfair Display", "Times New Roman", serif;
+  font-family: "Times New Roman", "SimSun", "Songti SC", "STSong", serif;
 }
 
 .nav {
@@ -141,7 +139,7 @@ body {
 .hero-content h2 {
   margin: 8px 0 10px;
   font-size: 32px;
-  font-family: "Playfair Display", "Times New Roman", serif;
+  font-family: "Times New Roman", "SimSun", "Songti SC", "STSong", serif;
 }
 
 .hero-content p {
@@ -755,3 +753,5 @@ textarea {
     font-size: 14px;
   }
 }
+
+
