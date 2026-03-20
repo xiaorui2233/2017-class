@@ -47,6 +47,7 @@ const relationType = document.getElementById("relationType");
 const relationNote = document.getElementById("relationNote");
 const addRelationBtn = document.getElementById("addRelationBtn");
 const relationList = document.getElementById("relationList");
+const relationRequests = document.getElementById("relationRequests");
 
 const studentList = document.getElementById("studentList");
 const scrollHome = document.getElementById("scrollHome");
@@ -354,6 +355,44 @@ function refreshRelations() {
   });
 }
 
+async function loadPendingRelations() {
+  if (!state.me || !relationRequests) return;
+  try {
+    const pending = await apiFetch("/relationships/pending");
+    relationRequests.innerHTML = "";
+    pending.forEach((rel) => {
+      const isIncoming = rel.to_student_id === state.me.id;
+      const otherId = isIncoming ? rel.from_student_id : rel.to_student_id;
+      const other = getStudentById(otherId);
+      const item = document.createElement("div");
+      item.className = "request-item";
+      item.innerHTML = `
+        <strong>${other ? other.name : otherId}</strong>
+        <div>${rel.type || "关系请求"} ${rel.note ? "· " + rel.note : ""}</div>
+        <div class="request-actions">
+          ${isIncoming ? `<button data-accept="${rel.id}">同意</button>` : ""}
+          ${isIncoming ? `<button class="ghost" data-reject="${rel.id}">拒绝</button>` : ""}
+          ${!isIncoming ? `<span class="hint">已发送，等待对方同意</span>` : ""}
+        </div>
+      `;
+      if (isIncoming) {
+        item.querySelector(`[data-accept="${rel.id}"]`).addEventListener("click", async () => {
+          await apiFetch(`/relationships/${rel.id}/accept`, { method: "POST" });
+          await loadData();
+          await loadPendingRelations();
+        });
+        item.querySelector(`[data-reject="${rel.id}"]`).addEventListener("click", async () => {
+          await apiFetch(`/relationships/${rel.id}/reject`, { method: "POST" });
+          await loadPendingRelations();
+        });
+      }
+      relationRequests.appendChild(item);
+    });
+  } catch (err) {
+    relationRequests.innerHTML = `<div class="hint">${err.message}</div>`;
+  }
+}
+
 function renderContent(data) {
   if (data.featured) {
     featuredTitle.textContent = data.featured.title || "";
@@ -442,6 +481,7 @@ async function loadData() {
     refreshStudentList();
     refreshRelations();
     drawScene();
+    await loadPendingRelations();
   } catch (err) {
     setStatus(err.message);
   }
@@ -565,7 +605,8 @@ async function addRelation() {
 
     relationType.value = "";
     relationNote.value = "";
-    await loadData();
+    setStatus("已发送关系请求，等待对方同意");
+    await loadPendingRelations();
   } catch (err) {
     setStatus(err.message);
   }

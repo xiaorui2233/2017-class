@@ -407,6 +407,48 @@ textarea {
   color: var(--muted);
 }
 
+.relation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.relation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 198, 178, 0.6);
+  background: rgba(255, 252, 248, 0.92);
+}
+
+.relation-requests {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(214, 198, 178, 0.8);
+}
+
+.relation-requests h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #6c4b2f;
+}
+
+.request-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 198, 178, 0.6);
+  background: rgba(255, 252, 248, 0.92);
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .sidebar {
   display: grid;
   gap: 18px;
