@@ -1,5 +1,5 @@
 ﻿const CONFIG = {
-  API_BASE_URL: "http://110.42.44.4:4000",
+  API_BASE_URL: "https://two017-class.onrender.com/",
 };
 
 const state = {
