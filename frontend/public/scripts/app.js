@@ -1,5 +1,5 @@
 ﻿const CONFIG = {
-  API_BASE_URL: "http://localhost:4000",
+  API_BASE_URL: "http://110.42.44.4:4000",
 };
 
 const state = {
