@@ -44,4 +44,13 @@ jobs:
           git pull --rebase origin "${BRANCH}"
           git push origin HEAD:"${BRANCH}"
 
-      # deploy-astro.yml 会通过 push 事件自动触发部署
+      - name: Trigger Astro deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: 'xiaorui2233',
+              repo: '2017-class',
+              workflow_id: 'deploy-astro.yml',
+              ref: 'master'
+            })
