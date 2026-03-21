@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
     paths:
       - "frontend/**"
-      - "assets/**"
+      - "assets/uploads/**"
       - ".github/workflows/deploy-astro.yml"
   workflow_dispatch:
 
