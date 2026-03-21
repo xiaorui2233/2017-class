@@ -1,10 +1,6 @@
 name: Deploy Astro to GitHub Pages
 
 on:
-  workflow_run:
-    workflows: ["Upload Image"]
-    types:
-      - completed
   push:
     branches: [ "master" ]
     paths:
