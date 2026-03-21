@@ -31,6 +31,9 @@ if (isPostgres) {
         lastID = idResult.rows[0]?.lastid;
       }
       return { lastID, changes: result.rowCount };
+    } catch (err) {
+      err.query = sql;
+      throw err;
     } finally {
       client.release();
     }
