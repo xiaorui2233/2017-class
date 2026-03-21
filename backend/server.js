@@ -227,8 +227,8 @@ app.post("/auth/register", async (req, res) => {
       const now = nowIso();
       await run(
         `INSERT INTO students (id, name, gender, avatar, bio, contact, tags, created_at, updated_at)
-         VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
-        [finalStudentId, name.trim(), now, now]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [finalStudentId, name.trim(), null, null, null, null, null, now, now]
       );
     }
 
