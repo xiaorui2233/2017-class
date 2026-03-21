@@ -44,12 +44,4 @@ jobs:
           git pull --rebase origin "${BRANCH}"
           git push origin HEAD:"${BRANCH}"
 
-      - name: Trigger Pages deploy
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/deploy-astro.yml/dispatches \
-            -d '{"ref":"master"}'
+      # deploy-astro.yml 会通过 push 事件自动触发部署
