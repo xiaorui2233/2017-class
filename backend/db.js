@@ -26,14 +26,15 @@ if (isPostgres) {
       const { sql: newSql, params: newParams } = convertParams(sql, params);
       const result = await client.query(newSql, newParams);
       let lastID = null;
-      if (result.command === 'INSERT') {
-        const idResult = await client.query('SELECT lastval() as lastid');
-        lastID = idResult.rows[0]?.lastid;
+      if (result.command === 'INSERT' && result.rowCount > 0) {
+        try {
+          const idResult = await client.query('SELECT lastval() as lastid');
+          lastID = idResult.rows[0]?.lastid;
+        } catch (e) {
+          // Table has no serial column, ignore
+        }
       }
       return { lastID, changes: result.rowCount };
-    } catch (err) {
-      err.query = sql;
-      throw err;
     } finally {
       client.release();
     }

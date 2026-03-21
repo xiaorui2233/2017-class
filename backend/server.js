@@ -165,15 +165,10 @@ async function dispatchUploadToGitHub({ filename, tempUrl, tempToken }) {
 
 async function createInvite(studentId) {
   const code = generateInviteCode();
-  try {
-    await run(
-      `INSERT INTO invites (code, student_id, created_at) VALUES (?, ?, ?)`,
-      [code, studentId || null, nowIso()]
-    );
-  } catch (err) {
-    console.error("createInvite error:", err.message, "sql:", err.query);
-    throw err;
-  }
+  await run(
+    `INSERT INTO invites (code, student_id, created_at) VALUES (?, ?, ?)`,
+    [code, studentId || null, nowIso()]
+  );
   return code;
 }
 
@@ -198,16 +193,7 @@ function adminMiddleware(req, res, next) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, isPostgres });
-});
-
-app.get("/debug/db", async (req, res) => {
-  try {
-    const tables = await all("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
-    return res.json({ tables, isPostgres });
-  } catch (err) {
-    return res.status(500).json({ error: err.message, isPostgres });
-  }
+  res.json({ ok: true });
 });
 
 app.post("/auth/register", async (req, res) => {
