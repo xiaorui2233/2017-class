@@ -1,11 +1,15 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
-const { initDb, run, get, all } = require("./db");
+const { initDb, run, get, all, isPostgres } = require("./db");
+
+function getOrderByName(table = "name") {
+  return isPostgres ? `ORDER BY LOWER(${table})` : `ORDER BY ${table} COLLATE NOCASE`;
+}
 
 const app = express();
 app.set("trust proxy", true);
@@ -296,7 +300,7 @@ app.put("/admin/content", adminMiddleware, (req, res) => {
 
 app.get("/admin/students", adminMiddleware, async (req, res) => {
   try {
-    const rows = await all("SELECT * FROM students ORDER BY name COLLATE NOCASE");
+    const rows = await all(`SELECT * FROM students ${getOrderByName()}`);
     return res.json(rows);
   } catch (err) {
     console.error(err);
@@ -310,7 +314,7 @@ app.get("/admin/accounts", adminMiddleware, async (req, res) => {
       `SELECT students.id, students.name, accounts.token, accounts.last_login_at
        FROM students
        LEFT JOIN accounts ON students.id = accounts.student_id
-       ORDER BY students.name COLLATE NOCASE`
+       ${getOrderByName('students.name')}`
     );
     return res.json(rows);
   } catch (err) {
@@ -691,7 +695,7 @@ app.post("/admin/import", adminMiddleware, async (req, res) => {
 
 app.get("/students", async (req, res) => {
   try {
-    const rows = await all("SELECT * FROM students ORDER BY name COLLATE NOCASE");
+    const rows = await all(`SELECT * FROM students ${getOrderByName()}`);
     return res.json(rows);
   } catch (err) {
     console.error(err);

@@ -14,10 +14,17 @@ if (isPostgres) {
     ssl: { rejectUnauthorized: false },
   });
 
+  function convertParams(sql, params) {
+    let paramIndex = 1;
+    const newSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+    return { sql: newSql, params };
+  }
+
   run = async (sql, params = []) => {
     const client = await pool.connect();
     try {
-      const result = await client.query(sql, params);
+      const { sql: newSql, params: newParams } = convertParams(sql, params);
+      const result = await client.query(newSql, newParams);
       let lastID = null;
       if (result.command === 'INSERT') {
         const idResult = await client.query('SELECT lastval() as lastid');
@@ -32,7 +39,8 @@ if (isPostgres) {
   get = async (sql, params = []) => {
     const client = await pool.connect();
     try {
-      const result = await client.query(sql, params);
+      const { sql: newSql, params: newParams } = convertParams(sql, params);
+      const result = await client.query(newSql, newParams);
       return result.rows[0] || null;
     } finally {
       client.release();
@@ -42,7 +50,8 @@ if (isPostgres) {
   all = async (sql, params = []) => {
     const client = await pool.connect();
     try {
-      const result = await client.query(sql, params);
+      const { sql: newSql, params: newParams } = convertParams(sql, params);
+      const result = await client.query(newSql, newParams);
       return result.rows;
     } finally {
       client.release();
@@ -260,4 +269,5 @@ module.exports = {
   get,
   all,
   initDb,
+  isPostgres,
 };
