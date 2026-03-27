@@ -174,6 +174,20 @@ async function initDb() {
     `);
 
     await run(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        student_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        link TEXT,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )
+    `);
+
+    await run(`
       CREATE TABLE IF NOT EXISTS message_comments (
         id SERIAL PRIMARY KEY,
         message_id INTEGER NOT NULL,
@@ -262,6 +276,20 @@ async function initDb() {
         status TEXT NOT NULL DEFAULT 'pending',
         created_at TEXT NOT NULL,
         approved_at TEXT,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )`
+    );
+
+    await run(
+      `CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        link TEXT,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )`
     );

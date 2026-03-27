@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 const { initDb, run, get, all, isPostgres } = require("./db");
+const nodemailer = require("nodemailer");
 
 function getOrderByName(table = "name") {
   return isPostgres ? `ORDER BY LOWER(${table})` : `ORDER BY ${table} COLLATE NOCASE`;
@@ -27,6 +28,12 @@ const tempTokens = new Map();
 const UPLOAD_PROVIDER = (process.env.UPLOAD_PROVIDER || "local").toLowerCase();
 const FILE_ENCRYPT_KEY = process.env.FILE_ENCRYPT_KEY || "";
 const uploadsDir = path.join(__dirname, "uploads");
+const SMTP_HOST = process.env.SMTP_HOST || "";
+const SMTP_PORT = Number(process.env.SMTP_PORT || 0);
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "";
+const EMAIL_NOTIFICATIONS = (process.env.EMAIL_NOTIFICATIONS || "true").toLowerCase() !== "false";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -52,6 +59,47 @@ function ensureTempDir() {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isEmail(value) {
+  if (!value || typeof value !== "string") return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function getMailer() {
+  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) return null;
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+}
+
+async function sendEmail(to, subject, text) {
+  if (!EMAIL_NOTIFICATIONS) return;
+  const transporter = getMailer();
+  if (!transporter || !SMTP_FROM) return;
+  try {
+    await transporter.sendMail({ from: SMTP_FROM, to, subject, text });
+  } catch (err) {
+    console.error("Send email failed", err.message);
+  }
+}
+
+async function createNotification({ studentId, type, title, content, link }) {
+  const createdAt = nowIso();
+  const result = await run(
+    `INSERT INTO notifications (student_id, type, title, content, link, is_read, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?)`,
+    [studentId, type, title, content, link || null, createdAt]
+  );
+  const row = await get("SELECT * FROM notifications WHERE id = ?", [result.lastID]);
+  const student = await get("SELECT contact FROM students WHERE id = ?", [studentId]);
+  if (student && isEmail(student.contact)) {
+    await sendEmail(student.contact, title, content);
+  }
+  return row;
 }
 
 function generateToken() {
@@ -551,6 +599,16 @@ app.post("/messages/:id/comments", authMiddleware, async (req, res) => {
        WHERE message_comments.id = ?`,
       [result.lastID]
     );
+    const messageRow = await get("SELECT student_id FROM messages WHERE id = ?", [req.params.id]);
+    if (messageRow && messageRow.student_id && messageRow.student_id !== req.auth.studentId) {
+      await createNotification({
+        studentId: messageRow.student_id,
+        type: "comment_created",
+        title: "你的留言有新评论",
+        content: "有人评论了你的留言，快去看看吧。",
+        link: "/2017-class/class/#guestbook",
+      });
+    }
     return res.json(comment);
   } catch (err) {
     console.error(err);
@@ -569,6 +627,15 @@ app.delete("/messages/:messageId/comments/:commentId", authMiddleware, async (re
       return res.status(403).json({ error: "Forbidden" });
     }
     await run("DELETE FROM message_comments WHERE id = ?", [req.params.commentId]);
+    if (comment.student_id && comment.student_id !== req.auth.studentId) {
+      await createNotification({
+        studentId: comment.student_id,
+        type: "comment_deleted",
+        title: "你的评论被删除",
+        content: "你的一条评论已被删除。",
+        link: "/2017-class/class/#guestbook",
+      });
+    }
     return res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -675,7 +742,56 @@ app.put("/admin/messages/:id", adminMiddleware, async (req, res) => {
       req.params.id,
     ]);
     const msg = await get("SELECT * FROM messages WHERE id = ?", [req.params.id]);
+    if (msg && msg.student_id) {
+      if (status === "approved") {
+        await createNotification({
+          studentId: msg.student_id,
+          type: "message_approved",
+          title: "留言已通过审核",
+          content: "你的留言已通过审核并展示。",
+          link: "/2017-class/class/#guestbook",
+        });
+      } else {
+        await createNotification({
+          studentId: msg.student_id,
+          type: "message_rejected",
+          title: "留言未通过审核",
+          content: "你的留言未通过审核，可重新提交。",
+          link: "/2017-class/class/#guestbook",
+        });
+      }
+    }
     return res.json(msg);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/notifications", authMiddleware, async (req, res) => {
+  try {
+    const items = await all(
+      "SELECT * FROM notifications WHERE student_id = ? ORDER BY created_at DESC",
+      [req.auth.studentId]
+    );
+    const unread = items.filter((n) => !n.is_read).length;
+    return res.json({ unread, items });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/notifications/:id/read", authMiddleware, async (req, res) => {
+  try {
+    const note = await get("SELECT * FROM notifications WHERE id = ?", [req.params.id]);
+    if (!note) return res.status(404).json({ error: "Not found" });
+    if (note.student_id !== req.auth.studentId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    await run("UPDATE notifications SET is_read = 1 WHERE id = ?", [req.params.id]);
+    const updated = await get("SELECT * FROM notifications WHERE id = ?", [req.params.id]);
+    return res.json(updated);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });

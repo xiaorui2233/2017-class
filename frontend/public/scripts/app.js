@@ -1,7 +1,7 @@
 ﻿const CONFIG = {
   API_BASE_URL:
-  //"http://localhost:4000"
-   "https://two017-class.onrender.com",
+  "http://localhost:4000"
+   //"https://two017-class.onrender.com",
 };
 
 const state = {
@@ -75,6 +75,12 @@ const pageTransition = document.getElementById("pageTransition");
 const toastStack = document.getElementById("toastStack");
 const serverGate = document.getElementById("serverGate");
 const serverGateStatus = document.getElementById("serverGateStatus");
+const openNotifications = document.getElementById("openNotifications");
+const notificationModal = document.getElementById("notificationModal");
+const closeNotifications = document.getElementById("closeNotifications");
+const notificationList = document.getElementById("notificationList");
+const notificationBadge = document.getElementById("notificationBadge");
+const logoutBtn = document.getElementById("logoutBtn");
 
 const featuredTitle = document.getElementById("featuredTitle");
 const featuredDate = document.getElementById("featuredDate");
@@ -130,6 +136,16 @@ function setStatus(text) {
   if (statusEl) statusEl.textContent = text;
 }
 
+function updateAuthUI() {
+  const loggedIn = !!state.token && !!state.me;
+  if (openAuth) openAuth.style.display = loggedIn ? "none" : "";
+  if (logoutBtn) logoutBtn.style.display = loggedIn ? "" : "none";
+  if (!loggedIn) {
+    setStatus("未登录");
+    if (notificationBadge) notificationBadge.classList.add("hidden");
+  }
+}
+
 let albumItems = [];
 let albumIndex = 0;
 
@@ -166,6 +182,18 @@ function openModal() {
 function closeModal() {
   authModal.classList.remove("open");
   authModal.setAttribute("aria-hidden", "true");
+}
+
+function openNotificationModal() {
+  if (!notificationModal) return;
+  notificationModal.classList.add("open");
+  notificationModal.setAttribute("aria-hidden", "false");
+}
+
+function closeNotificationModal() {
+  if (!notificationModal) return;
+  notificationModal.classList.remove("open");
+  notificationModal.setAttribute("aria-hidden", "true");
 }
 
 function openDrawer() {
@@ -845,6 +873,54 @@ async function loadMessages() {
   }
 }
 
+let lastNotificationId = null;
+let notificationTimer = null;
+
+async function loadNotifications({ toastIfNew } = { toastIfNew: false }) {
+  try {
+    if (!state.token || !notificationList) return;
+    const data = await apiFetch("/notifications");
+    const { unread, items } = data || { unread: 0, items: [] };
+    if (notificationBadge) {
+      notificationBadge.textContent = unread;
+      notificationBadge.classList.toggle("hidden", unread === 0);
+    }
+    notificationList.innerHTML = "";
+    if (!items.length) {
+      notificationList.innerHTML = "<div class='hint'>暂无消息</div>";
+    }
+    items.forEach((note) => {
+      const item = document.createElement("div");
+      item.className = `notification-item ${note.is_read ? "" : "unread"}`;
+      item.innerHTML = `
+        <strong>${note.title}</strong>
+        <div>${note.content}</div>
+        <div class="notification-meta">${note.created_at ? note.created_at.split("T")[0] : ""}</div>
+      `;
+      item.addEventListener("click", async () => {
+        await apiFetch(`/notifications/${note.id}/read`, { method: "POST" });
+        if (note.link) {
+          window.location.href = note.link;
+        } else {
+          await loadNotifications();
+        }
+      });
+      notificationList.appendChild(item);
+    });
+    const newestId = items[0]?.id || null;
+    if (toastIfNew && newestId && newestId !== lastNotificationId) {
+      showToast("新消息", items[0]?.title || "你有新的消息");
+    }
+    if (!lastNotificationId) {
+      lastNotificationId = newestId;
+    } else if (newestId) {
+      lastNotificationId = newestId;
+    }
+  } catch (err) {
+    setStatus(err.message);
+  }
+}
+
 async function register() {
   try {
     const name = registerName.value.trim();
@@ -882,7 +958,12 @@ async function loginWithToken(token) {
     state.me = res.student;
     fillMe();
     setStatus(`已登录：${state.me.name}`);
+    updateAuthUI();
     await loadData();
+    await loadNotifications();
+    if (!notificationTimer) {
+      notificationTimer = setInterval(() => loadNotifications({ toastIfNew: true }), 30000);
+    }
     closeModal();
   } catch (err) {
     setStatus(err.message);
@@ -891,12 +972,12 @@ async function loginWithToken(token) {
 
 function fillMe() {
   if (!state.me) return;
-  meName.value = state.me.name || "";
-  meGender.value = state.me.gender || "";
-  meAvatar.value = state.me.avatar || "";
-  meBio.value = state.me.bio || "";
-  meContact.value = state.me.contact || "";
-  meTags.value = state.me.tags || "";
+  if (meName) meName.value = state.me.name || "";
+  if (meGender) meGender.value = state.me.gender || "";
+  if (meAvatar) meAvatar.value = state.me.avatar || "";
+  if (meBio) meBio.value = state.me.bio || "";
+  if (meContact) meContact.value = state.me.contact || "";
+  if (meTags) meTags.value = state.me.tags || "";
 }
 
 async function saveMe() {
@@ -1213,6 +1294,22 @@ bindToggle(toggleAlbums, albumsPanel, "收起相册墙", "展开相册墙");
 
 if (openAuth) openAuth.addEventListener("click", openModal);
 if (closeAuth) closeAuth.addEventListener("click", closeModal);
+if (logoutBtn) logoutBtn.addEventListener("click", () => {
+  state.token = "";
+  state.me = null;
+  localStorage.removeItem("class_token");
+  updateAuthUI();
+  closeDrawer();
+});
+if (openNotifications) openNotifications.addEventListener("click", () => {
+  if (!state.token) {
+    showToast("提示", "请先登录后查看消息");
+    return;
+  }
+  openNotificationModal();
+  loadNotifications();
+});
+if (closeNotifications) closeNotifications.addEventListener("click", closeNotificationModal);
 if (openProfile) openProfile.addEventListener("click", openDrawer);
 if (closeProfile) closeProfile.addEventListener("click", closeDrawer);
 if (lightboxClose) lightboxClose.addEventListener("click", closeLightbox);
@@ -1312,6 +1409,7 @@ window.addEventListener("keydown", (event) => {
     closeModal();
     closeDrawer();
     closeLightbox();
+    closeNotificationModal();
   }
 });
 
@@ -1359,6 +1457,11 @@ async function init() {
     await loginWithToken(state.token);
   } else {
     setStatus("请登录后编辑自己的星光资料");
+  }
+  updateAuthUI();
+  if (state.token && !notificationTimer) {
+    await loadNotifications();
+    notificationTimer = setInterval(() => loadNotifications({ toastIfNew: true }), 30000);
   }
   document.body.classList.add("ready");
 }

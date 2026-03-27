@@ -36,6 +36,8 @@ const basePath = "/2017-class/";
         </nav>
         <div class="actions">
           <button class="ghost" id="openAuth">登录 / 注册</button>
+          <button class="ghost" id="logoutBtn" style="display: none;">退出登录</button>
+          <button class="ghost" id="openNotifications">消息<span class="badge" id="notificationBadge">0</span></button>
           <span class="status" id="status"></span>
         </div>
       </header>
@@ -86,6 +88,14 @@ const basePath = "/2017-class/";
           <button id="loginBtn">登录</button>
         </div>
         <div class="hint" id="tokenHint"></div>
+      </div>
+    </div>
+
+    <div class="modal" id="notificationModal" aria-hidden="true">
+      <div class="modal-overlay" id="closeNotifications"></div>
+      <div class="modal-content">
+        <h3>我的消息</h3>
+        <div class="notification-list" id="notificationList"></div>
       </div>
     </div>
 
