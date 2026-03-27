@@ -77,9 +77,15 @@ function getMailer() {
 }
 
 async function sendEmail(to, subject, text) {
-  if (!EMAIL_NOTIFICATIONS) return;
+  if (!EMAIL_NOTIFICATIONS) {
+    console.log("[mail] skipped (EMAIL_NOTIFICATIONS=false)");
+    return;
+  }
   const transporter = getMailer();
-  if (!transporter || !SMTP_FROM) return;
+  if (!transporter || !SMTP_FROM) {
+    console.log("[mail] skipped (smtp not configured)");
+    return;
+  }
   try {
     const now = new Date().toLocaleString("zh-CN", { hour12: false });
     const html = `
@@ -94,7 +100,9 @@ async function sendEmail(to, subject, text) {
         </div>
       </div>
     `;
+    console.log("[mail] sending", { to, subject, from: SMTP_FROM });
     await transporter.sendMail({ from: SMTP_FROM, to, subject, text, html });
+    console.log("[mail] sent", { to, subject });
   } catch (err) {
     console.error("Send email failed", err.message);
   }
@@ -109,9 +117,19 @@ async function createNotification({ studentId, type, title, content, link }) {
   );
   const row = await get("SELECT * FROM notifications WHERE id = ?", [result.lastID]);
   const student = await get("SELECT contact FROM students WHERE id = ?", [studentId]);
-  if (student && isEmail(student.contact)) {
-    await sendEmail(student.contact, title, content);
+  if (!student) {
+    console.log("[notify] student not found", { studentId, type });
+    return row;
   }
+  if (!student.contact) {
+    console.log("[notify] no contact for student", { studentId, type });
+    return row;
+  }
+  if (!isEmail(student.contact)) {
+    console.log("[notify] contact is not email", { studentId, contact: student.contact, type });
+    return row;
+  }
+  await sendEmail(student.contact, title, content);
   return row;
 }
 
