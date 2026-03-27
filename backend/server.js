@@ -34,6 +34,8 @@ const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "";
 const EMAIL_NOTIFICATIONS = (process.env.EMAIL_NOTIFICATIONS || "true").toLowerCase() !== "false";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM = process.env.RESEND_FROM || "onboarding@resend.dev";
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 app.use(cors({ origin: CORS_ORIGIN }));
@@ -80,6 +82,48 @@ async function sendEmail(to, subject, text) {
   if (!EMAIL_NOTIFICATIONS) {
     console.log("[mail] skipped (EMAIL_NOTIFICATIONS=false)");
     return;
+  }
+  if (RESEND_API_KEY) {
+    try {
+      console.log("[mail] sending via resend", { to, subject, from: RESEND_FROM });
+      const now = new Date().toLocaleString("zh-CN", { hour12: false });
+      const html = `
+        <div style="font-family: 'Segoe UI', 'PingFang SC', sans-serif; background:#0e1220; padding:24px;">
+          <div style="max-width:520px;margin:0 auto;background:#181e33;border-radius:12px;padding:20px;color:#e9f1ff;">
+            <div style="font-size:18px;font-weight:700;margin-bottom:6px;">${subject}</div>
+            <div style="font-size:13px;color:#9fb0d3;margin-bottom:16px;">${now}</div>
+            <div style="background:#0f1426;border-left:4px solid #6ea8ff;padding:12px 14px;border-radius:8px;">
+              <div style="font-size:14px;line-height:1.6;color:#e9f1ff;">${text}</div>
+            </div>
+            <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2017级1班 · 毕业季星空</div>
+          </div>
+        </div>
+      `;
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: RESEND_FROM,
+          to: [to],
+          subject,
+          text,
+          html,
+        }),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("Send email failed", errText);
+        return;
+      }
+      console.log("[mail] sent", { to, subject });
+      return;
+    } catch (err) {
+      console.error("Send email failed", err.message);
+      return;
+    }
   }
   const transporter = getMailer();
   if (!transporter || !SMTP_FROM) {
