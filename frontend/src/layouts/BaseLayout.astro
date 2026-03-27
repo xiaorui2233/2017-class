@@ -53,6 +53,17 @@ const basePath = "/2017-class/";
 
     <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
+    <div class="server-gate" id="serverGate" aria-hidden="true">
+      <div class="server-gate-card">
+        <div class="server-gate-title">正在唤醒服务器…</div>
+        <p>Render 冷启动可能需要 20-60 秒，请稍等。</p>
+        <div class="server-gate-status" id="serverGateStatus">正在连接后端…</div>
+        <div class="server-gate-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+
     <button class="fab" id="openProfile">资料/关系</button>
     <div class="drawer-overlay" id="closeProfile"></div>
 

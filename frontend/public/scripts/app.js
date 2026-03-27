@@ -73,6 +73,8 @@ const bottomNavIndicator = document.getElementById("bottomNavIndicator");
 const bottomNav = document.querySelector(".bottom-nav");
 const pageTransition = document.getElementById("pageTransition");
 const toastStack = document.getElementById("toastStack");
+const serverGate = document.getElementById("serverGate");
+const serverGateStatus = document.getElementById("serverGateStatus");
 
 const featuredTitle = document.getElementById("featuredTitle");
 const featuredDate = document.getElementById("featuredDate");
@@ -206,6 +208,19 @@ function showToast(title, message) {
     toast.classList.add("hide");
     setTimeout(() => toast.remove(), 240);
   }, 2400);
+}
+
+function showServerGate(message) {
+  if (!serverGate) return;
+  if (serverGateStatus && message) serverGateStatus.textContent = message;
+  serverGate.classList.add("show");
+  serverGate.setAttribute("aria-hidden", "false");
+}
+
+function hideServerGate() {
+  if (!serverGate) return;
+  serverGate.classList.remove("show");
+  serverGate.setAttribute("aria-hidden", "true");
 }
 
 function normalizePath(pathname) {
@@ -1267,9 +1282,22 @@ async function init() {
     pageStack.classList.remove("hidden");
   }
   setStatus("加载中...");
-  await loadContent();
-  await loadData();
-  await loadMessages();
+  let attempts = 0;
+  let ready = false;
+  while (!ready && attempts < 6) {
+    attempts += 1;
+    showServerGate(`正在连接后端…第 ${attempts} 次`);
+    try {
+      await loadContent();
+      await loadData();
+      await loadMessages();
+      ready = true;
+    } catch (err) {
+      showServerGate("服务器正在启动，请稍等...");
+      await new Promise((r) => setTimeout(r, 4000));
+    }
+  }
+  hideServerGate();
   if (state.token) {
     loginToken.value = state.token;
     await loginWithToken(state.token);
