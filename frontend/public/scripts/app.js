@@ -771,13 +771,69 @@ async function loadMessages() {
     data.forEach((msg) => {
       const card = document.createElement("div");
       card.className = "message-card";
-      const author = msg.is_anonymous ? "匿名同学" : (msg.nickname || msg.student_id);
+      const author = msg.is_anonymous ? "匿名同学" : (msg.student_name || msg.student_id);
+      const comments = Array.isArray(msg.comments) ? msg.comments : [];
+      const commentItems = comments
+        .map((c) => {
+          const name = c.student_name || c.student_id;
+          const date = c.created_at ? c.created_at.split("T")[0] : "";
+          const canDelete = state.me && state.me.id === c.student_id;
+          return `
+            <div class="comment-item">
+              <div class="comment-head">
+                <strong>${name}</strong>
+                <span>${date}</span>
+                ${canDelete ? `<button class="ghost" data-delete="${c.id}" data-message="${msg.id}">删除</button>` : ""}
+              </div>
+              <div class="comment-body">${c.content}</div>
+            </div>
+          `;
+        })
+        .join("");
       card.innerHTML = `
         <strong>${author}</strong>
         <div class="message-meta">${msg.subtitle || ""} ${msg.created_at ? "· " + msg.created_at.split("T")[0] : ""}</div>
         <p>${msg.content}</p>
         ${msg.image_url ? `<img src="${msg.image_url}" alt="message" />` : ""}
+        <div class="comment-section">
+          <div class="comment-title">评论</div>
+          <div class="comment-list">${commentItems || "<div class='comment-empty'>暂无评论</div>"}</div>
+          <div class="comment-form">
+            <input type="text" placeholder="${state.token ? "写下你的评论" : "请先登录后评论"}" ${state.token ? "" : "disabled"} />
+            <button ${state.token ? "" : "disabled"} data-submit="${msg.id}">发送</button>
+          </div>
+        </div>
       `;
+      const input = card.querySelector(".comment-form input");
+      const submitBtn = card.querySelector(`[data-submit="${msg.id}"]`);
+      if (submitBtn && input) {
+        submitBtn.addEventListener("click", async () => {
+          const content = input.value.trim();
+          if (!content) return;
+          try {
+            await apiFetch(`/messages/${msg.id}/comments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content }),
+            });
+            await loadMessages();
+          } catch (err) {
+            msgHint.textContent = err.message;
+          }
+        });
+      }
+      card.querySelectorAll("[data-delete]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            const commentId = btn.getAttribute("data-delete");
+            const messageId = btn.getAttribute("data-message");
+            await apiFetch(`/messages/${messageId}/comments/${commentId}`, { method: "DELETE" });
+            await loadMessages();
+          } catch (err) {
+            msgHint.textContent = err.message;
+          }
+        });
+      });
       messageList.appendChild(card);
     });
   } catch (err) {

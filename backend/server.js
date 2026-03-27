@@ -464,9 +464,37 @@ app.delete("/admin/invites/:code", adminMiddleware, async (req, res) => {
 app.get("/messages", authMiddleware, async (req, res) => {
   try {
     const rows = await all(
-      "SELECT id, student_id, nickname, subtitle, content, image_url, is_anonymous, created_at FROM messages WHERE status = 'approved' ORDER BY created_at DESC"
+      `SELECT messages.id, messages.student_id, students.name as student_name, messages.subtitle, messages.content,
+              messages.image_url, messages.is_anonymous, messages.created_at
+       FROM messages
+       LEFT JOIN students ON students.id = messages.student_id
+       WHERE messages.status = 'approved'
+       ORDER BY messages.created_at DESC`
     );
-    return res.json(rows);
+    const ids = rows.map((r) => r.id);
+    let comments = [];
+    if (ids.length) {
+      const placeholders = ids.map(() => "?").join(",");
+      comments = await all(
+        `SELECT message_comments.id, message_comments.message_id, message_comments.student_id,
+                students.name as student_name, message_comments.content, message_comments.created_at
+         FROM message_comments
+         LEFT JOIN students ON students.id = message_comments.student_id
+         WHERE message_comments.message_id IN (${placeholders})
+         ORDER BY message_comments.created_at DESC`,
+        ids
+      );
+    }
+    const grouped = new Map();
+    comments.forEach((c) => {
+      if (!grouped.has(c.message_id)) grouped.set(c.message_id, []);
+      grouped.get(c.message_id).push(c);
+    });
+    const withComments = rows.map((row) => ({
+      ...row,
+      comments: grouped.get(row.id) || [],
+    }));
+    return res.json(withComments);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });
@@ -495,6 +523,53 @@ app.post("/messages", authMiddleware, async (req, res) => {
     );
     const msg = await get("SELECT * FROM messages WHERE id = ?", [result.lastID]);
     return res.json(msg);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/messages/:id/comments", authMiddleware, async (req, res) => {
+  try {
+    const { content } = req.body || {};
+    if (!content || typeof content !== "string") {
+      return res.status(400).json({ error: "content is required" });
+    }
+    const message = await get("SELECT id FROM messages WHERE id = ?", [req.params.id]);
+    if (!message) return res.status(404).json({ error: "Message not found" });
+    const createdAt = nowIso();
+    const result = await run(
+      `INSERT INTO message_comments (message_id, student_id, content, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [req.params.id, req.auth.studentId, content.trim(), createdAt]
+    );
+    const comment = await get(
+      `SELECT message_comments.id, message_comments.message_id, message_comments.student_id,
+              students.name as student_name, message_comments.content, message_comments.created_at
+       FROM message_comments
+       LEFT JOIN students ON students.id = message_comments.student_id
+       WHERE message_comments.id = ?`,
+      [result.lastID]
+    );
+    return res.json(comment);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.delete("/messages/:messageId/comments/:commentId", authMiddleware, async (req, res) => {
+  try {
+    const comment = await get(
+      "SELECT id, student_id FROM message_comments WHERE id = ? AND message_id = ?",
+      [req.params.commentId, req.params.messageId]
+    );
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+    if (comment.student_id !== req.auth.studentId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    await run("DELETE FROM message_comments WHERE id = ?", [req.params.commentId]);
+    return res.json({ ok: true });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });

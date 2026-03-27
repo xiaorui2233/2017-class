@@ -173,6 +173,18 @@ async function initDb() {
       )
     `);
 
+    await run(`
+      CREATE TABLE IF NOT EXISTS message_comments (
+        id SERIAL PRIMARY KEY,
+        message_id INTEGER NOT NULL,
+        student_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )
+    `);
+
     // Add missing columns for migration
     try {
       await run(`ALTER TABLE relationships ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'accepted'`);
@@ -250,6 +262,18 @@ async function initDb() {
         status TEXT NOT NULL DEFAULT 'pending',
         created_at TEXT NOT NULL,
         approved_at TEXT,
+        FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
+      )`
+    );
+
+    await run(
+      `CREATE TABLE IF NOT EXISTS message_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_id INTEGER NOT NULL,
+        student_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE,
         FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
       )`
     );
