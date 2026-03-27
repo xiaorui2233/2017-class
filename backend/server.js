@@ -601,11 +601,13 @@ app.post("/messages/:id/comments", authMiddleware, async (req, res) => {
     );
     const messageRow = await get("SELECT student_id FROM messages WHERE id = ?", [req.params.id]);
     if (messageRow && messageRow.student_id && messageRow.student_id !== req.auth.studentId) {
+      const commenter = await get("SELECT name FROM students WHERE id = ?", [req.auth.studentId]);
+      const commenterName = commenter?.name || "同学";
       await createNotification({
         studentId: messageRow.student_id,
         type: "comment_created",
         title: "你的留言有新评论",
-        content: "有人评论了你的留言，快去看看吧。",
+        content: `${commenterName} 评论了你的留言，快去看看吧。`,
         link: "/2017-class/class/#guestbook",
       });
     }
