@@ -81,7 +81,20 @@ async function sendEmail(to, subject, text) {
   const transporter = getMailer();
   if (!transporter || !SMTP_FROM) return;
   try {
-    await transporter.sendMail({ from: SMTP_FROM, to, subject, text });
+    const now = new Date().toLocaleString("zh-CN", { hour12: false });
+    const html = `
+      <div style="font-family: 'Segoe UI', 'PingFang SC', sans-serif; background:#0e1220; padding:24px;">
+        <div style="max-width:520px;margin:0 auto;background:#181e33;border-radius:12px;padding:20px;color:#e9f1ff;">
+          <div style="font-size:18px;font-weight:700;margin-bottom:6px;">${subject}</div>
+          <div style="font-size:13px;color:#9fb0d3;margin-bottom:16px;">${now}</div>
+          <div style="background:#0f1426;border-left:4px solid #6ea8ff;padding:12px 14px;border-radius:8px;">
+            <div style="font-size:14px;line-height:1.6;color:#e9f1ff;">${text}</div>
+          </div>
+          <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2017级1班 · 毕业季星空</div>
+        </div>
+      </div>
+    `;
+    await transporter.sendMail({ from: SMTP_FROM, to, subject, text, html });
   } catch (err) {
     console.error("Send email failed", err.message);
   }
