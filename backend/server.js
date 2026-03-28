@@ -95,7 +95,7 @@ async function sendEmail(to, subject, text) {
             <div style="background:#0f1426;border-left:4px solid #6ea8ff;padding:12px 14px;border-radius:8px;">
               <div style="font-size:14px;line-height:1.6;color:#e9f1ff;">${text}</div>
             </div>
-            <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2017级1班 · 毕业季星空</div>
+            <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2023级1班 · 毕业季星空</div>
           </div>
         </div>
       `;
@@ -140,7 +140,7 @@ async function sendEmail(to, subject, text) {
           <div style="background:#0f1426;border-left:4px solid #6ea8ff;padding:12px 14px;border-radius:8px;">
             <div style="font-size:14px;line-height:1.6;color:#e9f1ff;">${text}</div>
           </div>
-          <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2017级1班 · 毕业季星空</div>
+          <div style="margin-top:16px;font-size:12px;color:#7f8db3;">2023级1班 · 毕业季星空</div>
         </div>
       </div>
     `;

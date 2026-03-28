@@ -953,9 +953,10 @@ textarea {
 
 .starfield {
   position: relative;
-  background: radial-gradient(circle at 20% 20%, rgba(120, 190, 255, 0.25), transparent 60%),
-    radial-gradient(circle at 80% 10%, rgba(108, 124, 255, 0.18), transparent 55%),
-    radial-gradient(circle at 50% 70%, rgba(90, 140, 255, 0.22), transparent 60%),
+  background: radial-gradient(circle at 20% 20%, rgba(120, 190, 255, 0.32), transparent 60%),
+    radial-gradient(circle at 80% 10%, rgba(108, 124, 255, 0.22), transparent 55%),
+    radial-gradient(circle at 50% 70%, rgba(90, 140, 255, 0.26), transparent 60%),
+    radial-gradient(circle at 70% 80%, rgba(40, 80, 160, 0.28), transparent 60%),
     rgba(5, 8, 20, 0.98);
   border-radius: 16px;
   overflow: hidden;
@@ -969,9 +970,10 @@ textarea {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 10% 20%, rgba(180, 220, 255, 0.08), transparent 40%),
-    radial-gradient(circle at 80% 30%, rgba(150, 180, 255, 0.08), transparent 45%),
-    radial-gradient(circle at 60% 80%, rgba(120, 200, 255, 0.06), transparent 40%);
+  background: radial-gradient(circle at 10% 20%, rgba(180, 220, 255, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 30%, rgba(150, 180, 255, 0.1), transparent 45%),
+    radial-gradient(circle at 60% 80%, rgba(120, 200, 255, 0.08), transparent 40%),
+    radial-gradient(circle at 35% 55%, rgba(120, 190, 255, 0.06), transparent 50%);
   pointer-events: none;
   animation: nebulaPulse 10s ease-in-out infinite;
 }
@@ -1172,13 +1174,17 @@ textarea {
   position: absolute;
   left: 16px;
   top: 16px;
-  width: min(280px, 90%);
-  max-height: 220px;
+  width: min(300px, 90%);
+  max-height: 260px;
   overflow: hidden;
   padding: 12px;
   border-radius: 14px;
   border: 1px solid rgba(130, 170, 255, 0.45);
   background: rgba(18, 26, 56, 0.38);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(120, 180, 255, 0.08), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(200, 230, 255, 0.06), transparent 50%),
+    radial-gradient(circle at 30% 90%, rgba(140, 200, 255, 0.05), transparent 55%);
   color: #e7efff;
   box-shadow: 0 12px 28px rgba(6, 12, 30, 0.5);
   backdrop-filter: blur(16px) saturate(120%);
@@ -1253,13 +1259,14 @@ textarea {
   font-size: 12px;
   color: rgba(231, 239, 255, 0.7);
   margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 .star-panel-list {
   display: grid;
   gap: 6px;
   font-size: 12px;
-  max-height: 130px;
+  max-height: 160px;
   overflow: auto;
   padding-right: 4px;
   scrollbar-width: thin;
@@ -1271,6 +1278,41 @@ textarea {
   border-radius: 10px;
   background: rgba(120, 170, 255, 0.1);
   border: 1px solid rgba(120, 170, 255, 0.25);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.relation-name {
+  font-weight: 600;
+  color: rgba(231, 239, 255, 0.95);
+}
+
+.relation-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 190, 255, 0.35);
+  background: rgba(110, 170, 255, 0.12);
+  color: rgba(210, 235, 255, 0.95);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+}
+
+.relation-note {
+  color: rgba(190, 210, 240, 0.8);
+}
+
+.star-panel-more {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(120, 170, 255, 0.08);
+  border: 1px dashed rgba(120, 170, 255, 0.35);
+  color: rgba(231, 239, 255, 0.9);
+  cursor: pointer;
+  text-align: center;
 }
 
 .star-panel-list::-webkit-scrollbar {
@@ -1296,6 +1338,17 @@ textarea {
   100% {
     filter: drop-shadow(0 0 6px rgba(160, 210, 255, 0.35));
   }
+}
+
+body.low-power .star-panel {
+  background: rgba(12, 18, 40, 0.8);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 10px 20px rgba(6, 10, 24, 0.45);
+}
+
+body.low-power .star-panel::before {
+  animation: none;
 }
 
 @media (max-width: 640px) {
@@ -1327,6 +1380,15 @@ textarea {
   .hero,
   .star-hero {
     padding: 70px 16px 80px;
+  }
+
+  .star-panel {
+    width: min(320px, 92vw);
+    max-height: 45vh;
+  }
+
+  .star-panel-list {
+    max-height: 28vh;
   }
 
   .hero-content h2 {

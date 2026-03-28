@@ -1,7 +1,7 @@
 ﻿const CONFIG = {
   API_BASE_URL:
-   // "http://localhost:4000"
-   "https://two017-class.onrender.com",
+    "http://localhost:4000"
+//"https://two017-class.onrender.com",
 };
 
 const state = {
@@ -9,11 +9,24 @@ const state = {
   relationships: [],
   positions: new Map(),
   velocities: new Map(),
+  linksById: new Map(),
+  linkDrawList: [],
   backgroundStars: [],
   dustParticles: [],
   shootingStars: [],
   hoveredId: null,
   selectedId: null,
+  panelExpandedId: null,
+  viewOffset: { x: 0, y: 0 },
+  targetOffset: { x: 0, y: 0 },
+  viewScale: 1,
+  targetScale: 1,
+  dragOffset: { x: 0, y: 0 },
+  dragActive: false,
+  dragStart: null,
+  dragBaseline: null,
+  lowPower: false,
+  repulsionStride: 1,
   token: localStorage.getItem("class_token") || "",
   me: null,
   lastFrame: performance.now(),
@@ -205,15 +218,26 @@ function openDrawer() {
     showToast("提示", "当前页面未加载资料面板。");
     return;
   }
+  sidebarDrawer.removeAttribute("inert");
   sidebarDrawer.classList.add("open");
   sidebarDrawer.setAttribute("aria-hidden", "false");
   closeProfile.classList.add("open");
+  requestAnimationFrame(() => {
+    const focusTarget =
+      sidebarDrawer.querySelector("input, textarea, select, button") || sidebarDrawer;
+    if (focusTarget && focusTarget.focus) focusTarget.focus();
+  });
 }
 
 function closeDrawer() {
   if (!sidebarDrawer || !closeProfile) return;
+  if (document.activeElement && sidebarDrawer.contains(document.activeElement)) {
+    if (openProfile && openProfile.focus) openProfile.focus();
+    else document.activeElement.blur();
+  }
   sidebarDrawer.classList.remove("open");
   sidebarDrawer.setAttribute("aria-hidden", "true");
+  sidebarDrawer.setAttribute("inert", "");
   closeProfile.classList.remove("open");
 }
 
@@ -307,21 +331,33 @@ function resizeCanvas() {
   canvas.width = canvas.clientWidth * ratio;
   canvas.height = canvas.clientHeight * ratio;
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  updateRenderBudget();
   buildBackgroundStars();
   drawScene();
+}
+
+function updateRenderBudget() {
+  const isSmallScreen = window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+  const heavyGraph = state.students.length > 120 || state.relationships.length > 260;
+  state.lowPower = isSmallScreen || heavyGraph;
+  state.repulsionStride = state.students.length > 140 ? 3 : state.students.length > 90 ? 2 : 1;
+  document.body.classList.toggle("low-power", state.lowPower);
+  rebuildLinkDrawList();
 }
 
 function buildBackgroundStars() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
-  state.backgroundStars = Array.from({ length: 260 }, () => ({
+  const starCount = state.lowPower ? 140 : 260;
+  const dustCount = state.lowPower ? 40 : 80;
+  state.backgroundStars = Array.from({ length: starCount }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
     r: 0.6 + Math.random() * 1.8,
     phase: Math.random() * Math.PI * 2,
     hue: 210 + Math.random() * 40,
   }));
-  state.dustParticles = Array.from({ length: 80 }, () => ({
+  state.dustParticles = Array.from({ length: dustCount }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
     r: 6 + Math.random() * 14,
@@ -331,6 +367,30 @@ function buildBackgroundStars() {
   state.shootingStars = [];
 }
 
+function rebuildRelationIndex() {
+  const linksById = new Map();
+  state.relationships.forEach((rel) => {
+    const from = rel.from_student_id;
+    const to = rel.to_student_id;
+    if (!linksById.has(from)) linksById.set(from, []);
+    if (!linksById.has(to)) linksById.set(to, []);
+    linksById.get(from).push(rel);
+    linksById.get(to).push(rel);
+  });
+  state.linksById = linksById;
+  rebuildLinkDrawList();
+}
+
+function rebuildLinkDrawList() {
+  const limit = state.lowPower ? 220 : 9999;
+  if (state.relationships.length <= limit) {
+    state.linkDrawList = state.relationships;
+    return;
+  }
+  const stride = Math.ceil(state.relationships.length / limit);
+  state.linkDrawList = state.relationships.filter((_, idx) => idx % stride === 0);
+}
+
 function initPositions() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
@@ -338,6 +398,7 @@ function initPositions() {
   const centerY = height / 2;
   const maxRadius = Math.min(width, height) * 0.38;
   const goldenAngle = 2.399963229728653;
+  const studentIds = new Set(state.students.map((s) => s.id));
 
   state.students.forEach((student, index) => {
     if (!state.positions.has(student.id)) {
@@ -351,7 +412,7 @@ function initPositions() {
   });
 
   for (const id of state.positions.keys()) {
-    if (!state.students.find((s) => s.id === id)) {
+    if (!studentIds.has(id)) {
       state.positions.delete(id);
       state.velocities.delete(id);
     }
@@ -367,6 +428,7 @@ function applyForces(dt) {
   const repulsion = 2200;
   const attraction = 0.004;
   const edgePadding = 40;
+  const repulsionStride = state.repulsionStride || 1;
 
   for (let i = 0; i < ids.length; i += 1) {
     const idA = ids[i];
@@ -377,7 +439,7 @@ function applyForces(dt) {
     let fx = (center.x - posA.x) * attraction;
     let fy = (center.y - posA.y) * attraction;
 
-    for (let j = 0; j < ids.length; j += 1) {
+    for (let j = 0; j < ids.length; j += repulsionStride) {
       if (i === j) continue;
       const idB = ids[j];
       const posB = state.positions.get(idB);
@@ -390,13 +452,16 @@ function applyForces(dt) {
       fy += (dy / Math.sqrt(distSq)) * force;
     }
 
-    state.relationships.forEach((rel) => {
-      if (rel.from_student_id !== idA) return;
-      const posB = state.positions.get(rel.to_student_id);
-      if (!posB) return;
-      fx += (posB.x - posA.x) * 0.008;
-      fy += (posB.y - posA.y) * 0.008;
-    });
+    const links = state.linksById.get(idA);
+    if (links) {
+      links.forEach((rel) => {
+        const otherId = rel.from_student_id === idA ? rel.to_student_id : rel.from_student_id;
+        const posB = state.positions.get(otherId);
+        if (!posB) return;
+        fx += (posB.x - posA.x) * 0.008;
+        fy += (posB.y - posA.y) * 0.008;
+      });
+    }
 
     velA.x = (velA.x + fx * dt) * 0.88;
     velA.y = (velA.y + fy * dt) * 0.88;
@@ -409,12 +474,56 @@ function applyForces(dt) {
   }
 }
 
+function getDrawLinks() {
+  if (state.selectedId) {
+    return state.linksById.get(state.selectedId) || [];
+  }
+  return state.linkDrawList || [];
+}
+
+function getScreenPosition(pos) {
+  return {
+    x: pos.x * state.viewScale + state.viewOffset.x + state.dragOffset.x,
+    y: pos.y * state.viewScale + state.viewOffset.y + state.dragOffset.y,
+  };
+}
+
+function updateViewOffset() {
+  if (!canvas) return;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  let targetX = 0;
+  let targetY = 0;
+  let targetScale = 1;
+  if (state.selectedId) {
+    const pos = state.positions.get(state.selectedId);
+    if (pos) {
+      targetScale = state.lowPower ? 1.035 : 1.06;
+      targetX = width / 2 - pos.x * targetScale;
+      targetY = height / 2 - pos.y * targetScale;
+    }
+  }
+  state.targetOffset.x = targetX;
+  state.targetOffset.y = targetY;
+  state.targetScale = targetScale;
+  const ease = state.lowPower ? 0.12 : 0.08;
+  state.viewOffset.x += (targetX - state.viewOffset.x) * ease;
+  state.viewOffset.y += (targetY - state.viewOffset.y) * ease;
+  state.viewScale += (targetScale - state.viewScale) * ease;
+  if (!state.dragActive) {
+    state.dragOffset.x *= 0.86;
+    state.dragOffset.y *= 0.86;
+  }
+}
+
 function drawScene() {
   ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
   initPositions();
   const t = performance.now() / 1000;
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
+  const focusPos = state.selectedId ? state.positions.get(state.selectedId) : null;
+  const focusScreen = focusPos ? getScreenPosition(focusPos) : null;
 
   // deep space backdrop glow
   const bg = ctx.createRadialGradient(width * 0.2, height * 0.2, 20, width * 0.5, height * 0.5, Math.max(width, height));
@@ -424,19 +533,49 @@ function drawScene() {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
 
+  // subtle radial bloom for depth
+  const wave = 0.5 + 0.5 * Math.sin(t * 0.35);
+  const bloomX = focusScreen ? focusScreen.x : width * 0.6;
+  const bloomY = focusScreen ? focusScreen.y : height * 0.45;
+  const bloom = ctx.createRadialGradient(bloomX, bloomY, 0, bloomX, bloomY, Math.max(width, height) * 0.6);
+  bloom.addColorStop(0, `rgba(100, 160, 255, ${0.08 + wave * 0.08})`);
+  bloom.addColorStop(0.5, "rgba(70, 120, 220, 0.04)");
+  bloom.addColorStop(1, "rgba(4, 6, 16, 0)");
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, width, height);
+
+  if (focusScreen && !state.lowPower) {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 0.8);
+    const halo = ctx.createRadialGradient(
+      focusScreen.x,
+      focusScreen.y,
+      0,
+      focusScreen.x,
+      focusScreen.y,
+      220 + pulse * 140
+    );
+    halo.addColorStop(0, `rgba(140, 210, 255, ${0.18 + pulse * 0.12})`);
+    halo.addColorStop(0.35, "rgba(90, 150, 255, 0.08)");
+    halo.addColorStop(1, "rgba(6, 10, 24, 0)");
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, width, height);
+  }
+
   // nebula dust
-  state.dustParticles.forEach((dust, idx) => {
-    const offset = (t * dust.drift * 10 + idx) % width;
-    const x = (dust.x + offset) % width;
-    const y = (dust.y + Math.sin(t * dust.drift + idx) * 6 + height) % height;
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, dust.r);
-    gradient.addColorStop(0, `rgba(120, 170, 255, ${dust.a})`);
-    gradient.addColorStop(1, "rgba(120, 170, 255, 0)");
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(x, y, dust.r, 0, Math.PI * 2);
-    ctx.fill();
-  });
+  if (!state.lowPower) {
+    state.dustParticles.forEach((dust, idx) => {
+      const offset = (t * dust.drift * 10 + idx) % width;
+      const x = (dust.x + offset) % width;
+      const y = (dust.y + Math.sin(t * dust.drift + idx) * 6 + height) % height;
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, dust.r);
+      gradient.addColorStop(0, `rgba(120, 170, 255, ${dust.a})`);
+      gradient.addColorStop(1, "rgba(120, 170, 255, 0)");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, dust.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
 
   state.backgroundStars.forEach((star) => {
     const twinkle = 0.4 + 0.6 * Math.sin(t * 1.2 + star.phase);
@@ -447,7 +586,7 @@ function drawScene() {
   });
 
   // random shooting stars
-  if (Math.random() < 0.01 && state.shootingStars.length < 2) {
+  if (!state.lowPower && Math.random() < 0.01 && state.shootingStars.length < 2) {
     state.shootingStars.push({
       x: Math.random() * width,
       y: Math.random() * height * 0.5,
@@ -473,49 +612,98 @@ function drawScene() {
   });
 
   ctx.save();
+  ctx.translate(state.viewOffset.x + state.dragOffset.x, state.viewOffset.y + state.dragOffset.y);
+  ctx.scale(state.viewScale, state.viewScale);
   ctx.lineWidth = 1.2;
-  state.relationships.forEach((rel, index) => {
+  const linksToDraw = getDrawLinks();
+  linksToDraw.forEach((rel, index) => {
     const from = state.positions.get(rel.from_student_id);
     const to = state.positions.get(rel.to_student_id);
     if (!from || !to) return;
     const pulse = 0.3 + 0.7 * Math.sin(t * 1.1 + index);
     const mx = (from.x + to.x) / 2;
     const my = (from.y + to.y) / 2 - 20;
-    ctx.strokeStyle = `rgba(141, 211, 255, ${0.15 + pulse * 0.35})`;
+    const isFocus = state.selectedId && (rel.from_student_id === state.selectedId || rel.to_student_id === state.selectedId);
+    const alphaBoost = isFocus ? 0.55 : 0.0;
+    const baseAlpha = 0.05 + pulse * (0.18 + alphaBoost);
+    const dimFactor = state.selectedId && !isFocus ? 0.22 : 1;
+    if (!state.lowPower) {
+      const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+      grad.addColorStop(0, `rgba(120, 190, 255, ${baseAlpha * 0.6 * dimFactor})`);
+      grad.addColorStop(0.5, `rgba(190, 230, 255, ${baseAlpha * 1.2 * dimFactor})`);
+      grad.addColorStop(1, `rgba(120, 190, 255, ${baseAlpha * 0.5 * dimFactor})`);
+      ctx.strokeStyle = grad;
+    } else {
+      ctx.strokeStyle = `rgba(141, 211, 255, ${baseAlpha * dimFactor})`;
+    }
+    if (isFocus) {
+      ctx.shadowColor = "rgba(120, 210, 255, 0.6)";
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2.1;
+    } else {
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = 1.1;
+    }
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.quadraticCurveTo(mx, my, to.x, to.y);
     ctx.stroke();
   });
-  ctx.restore();
 
   state.students.forEach((student) => {
     const pos = state.positions.get(student.id);
     if (!pos) return;
     const flicker = 0.6 + 0.4 * Math.sin(t * 2.2 + student.id.length);
-    const radius = state.hoveredId === student.id ? 7 : 3.2 + flicker * 1.6;
+    const isHovered = state.hoveredId === student.id;
+    const isSelected = state.selectedId === student.id;
+    const dim = state.selectedId && !isSelected ? 0.4 : 1;
+    const radius = isSelected ? 9 : isHovered ? 7 : 3.2 + flicker * 1.6;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = state.hoveredId === student.id ? "#fef9d7" : "rgba(254, 249, 215, 0.85)";
-    ctx.shadowColor = "rgba(242, 167, 255, 0.8)";
-    ctx.shadowBlur = state.hoveredId === student.id ? 16 : 6 + flicker * 8;
+    ctx.fillStyle = isSelected
+      ? "#fff6c2"
+      : isHovered
+        ? `rgba(254, 249, 215, ${0.95 * dim})`
+        : `rgba(254, 249, 215, ${0.75 * dim})`;
+    ctx.shadowColor = isSelected ? "rgba(140, 220, 255, 0.9)" : "rgba(242, 167, 255, 0.7)";
+    ctx.shadowBlur = isSelected ? 26 : isHovered ? 14 : (6 + flicker * 8) * dim;
     ctx.fill();
   });
 
   if (state.selectedId) {
     const pos = state.positions.get(state.selectedId);
     if (pos) {
-      positionStarPanel(pos.x, pos.y);
+      const screenPos = getScreenPosition(pos);
+      positionStarPanel(screenPos.x, screenPos.y);
+      const pulse = 0.5 + 0.5 * Math.sin(t * 1.6);
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 14 + pulse * 6, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(160, 220, 255, ${0.35 + pulse * 0.35})`;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 26 + pulse * 10, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(120, 180, 255, ${0.12 + pulse * 0.18})`;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
     }
   }
+  ctx.restore();
 }
 
 function animate() {
   if (!canvas || !ctx) return;
   const now = performance.now();
+  const frameSkip = state.lowPower ? 2 : 1;
+  state._frameCount = (state._frameCount || 0) + 1;
+  if (frameSkip > 1 && state._frameCount % frameSkip !== 0) {
+    requestAnimationFrame(animate);
+    return;
+  }
   const dt = Math.min(0.05, (now - state.lastFrame) / 1000);
   state.lastFrame = now;
   applyForces(dt);
+  updateViewOffset();
   drawScene();
   requestAnimationFrame(animate);
 }
@@ -566,30 +754,64 @@ function renderStarPanel(studentId) {
     starPanelTitle.textContent = "";
     starPanelMeta.textContent = "";
     starPanelList.innerHTML = "";
+    state.panelExpandedId = null;
     return;
   }
   starPanel.classList.remove("hidden");
   starPanel.classList.add("show");
   const student = getStudentById(studentId);
   starPanelTitle.textContent = student ? student.name : studentId;
-  starPanelMeta.textContent = student?.tags || student?.contact || "";
+  const links = state.linksById.get(studentId) || [];
+  const metaParts = [];
+  if (student?.tags) metaParts.push(student.tags);
+  if (student?.contact) metaParts.push(student.contact);
+  metaParts.push(`关系 ${links.length} 条`);
+  starPanelMeta.textContent = metaParts.filter(Boolean).join(" · ");
 
-  const links = state.relationships.filter(
-    (rel) => rel.from_student_id === studentId || rel.to_student_id === studentId
-  );
   if (!links.length) {
     starPanelList.innerHTML = "<div class='star-panel-item'>暂无关系</div>";
     return;
   }
+  const maxItems = state.lowPower ? 12 : 20;
+  const isExpanded = state.panelExpandedId === studentId;
+  const visibleLinks = isExpanded ? links : links.slice(0, maxItems);
   starPanelList.innerHTML = "";
-  links.forEach((rel) => {
+  const fragment = document.createDocumentFragment();
+  visibleLinks.forEach((rel) => {
     const otherId = rel.from_student_id === studentId ? rel.to_student_id : rel.from_student_id;
     const other = getStudentById(otherId);
     const item = document.createElement("div");
     item.className = "star-panel-item";
-    item.textContent = `${other ? other.name : otherId} · ${rel.type || "关系"}${rel.note ? " · " + rel.note : ""}`;
-    starPanelList.appendChild(item);
+    const name = document.createElement("span");
+    name.className = "relation-name";
+    name.textContent = other ? other.name : otherId;
+    const type = document.createElement("span");
+    type.className = "relation-tag";
+    type.textContent = rel.type || "关系";
+    item.appendChild(name);
+    item.appendChild(document.createTextNode(" · "));
+    item.appendChild(type);
+    if (rel.note) {
+      const note = document.createElement("span");
+      note.className = "relation-note";
+      note.textContent = rel.note;
+      item.appendChild(document.createTextNode(" · "));
+      item.appendChild(note);
+    }
+    fragment.appendChild(item);
   });
+  if (links.length > maxItems) {
+    const more = document.createElement("button");
+    more.className = "star-panel-more";
+    more.type = "button";
+    more.textContent = isExpanded ? `收起关系 (${links.length})` : `查看更多关系 (${links.length})`;
+    more.addEventListener("click", () => {
+      state.panelExpandedId = isExpanded ? null : studentId;
+      renderStarPanel(studentId);
+    });
+    fragment.appendChild(more);
+  }
+  starPanelList.appendChild(fragment);
 }
 
 function refreshStudentList() {
@@ -781,6 +1003,8 @@ async function loadData() {
     ]);
     state.students = students;
     state.relationships = relationships;
+    rebuildRelationIndex();
+    updateRenderBudget();
     refreshStudentList();
     refreshRelations();
     renderStarPanel(state.selectedId);
@@ -1164,6 +1388,7 @@ if (pageStack) {
     "touchmove",
     (event) => {
       if (autoScrollLock || touchStartY === null) return;
+      if (!event.cancelable) return;
       const delta = event.touches[0].clientY - touchStartY;
       if (isNearSectionTop(mainSection) && delta < -35) {
         event.preventDefault();
@@ -1188,51 +1413,109 @@ if (pageStack) {
 }
 
 if (canvas) canvas.addEventListener("mousemove", (event) => {
+  if (state.dragActive) return;
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
+  const worldX = (x - state.viewOffset.x - state.dragOffset.x) / state.viewScale;
+  const worldY = (y - state.viewOffset.y - state.dragOffset.y) / state.viewScale;
 
   let hovered = null;
+  let closestDist = Infinity;
   for (const student of state.students) {
     const pos = state.positions.get(student.id);
     if (!pos) continue;
-    const dx = x - pos.x;
-    const dy = y - pos.y;
-    if (Math.sqrt(dx * dx + dy * dy) < 8) {
+    const dx = worldX - pos.x;
+    const dy = worldY - pos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < closestDist) {
+      closestDist = dist;
       hovered = student;
-      break;
     }
   }
 
-  if (hovered) {
+  const snapRadius = 18 / state.viewScale;
+  if (hovered && closestDist <= snapRadius) {
     state.hoveredId = hovered.id;
     showHoverCard(hovered, x, y);
   } else {
     state.hoveredId = null;
     hideHoverCard();
   }
-  drawScene();
 });
 
 if (canvas) canvas.addEventListener("mouseleave", () => {
   state.hoveredId = null;
   hideHoverCard();
-  drawScene();
 });
 
+  if (canvas) {
+  canvas.addEventListener("pointerdown", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const worldX = (x - state.viewOffset.x - state.dragOffset.x) / state.viewScale;
+    const worldY = (y - state.viewOffset.y - state.dragOffset.y) / state.viewScale;
+    let hit = false;
+    for (const student of state.students) {
+      const pos = state.positions.get(student.id);
+      if (!pos) continue;
+      const dx = worldX - pos.x;
+      const dy = worldY - pos.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 10 / state.viewScale) {
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) {
+      state.dragActive = true;
+      state.dragStart = { x: event.clientX, y: event.clientY, moved: false };
+      state.dragBaseline = { x: state.dragOffset.x, y: state.dragOffset.y };
+      canvas.setPointerCapture(event.pointerId);
+    }
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    if (!state.dragActive || !state.dragStart || !state.dragBaseline) return;
+    const dx = event.clientX - state.dragStart.x;
+    const dy = event.clientY - state.dragStart.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance > 6) state.dragStart.moved = true;
+    state.dragOffset.x = state.dragBaseline.x + dx;
+    state.dragOffset.y = state.dragBaseline.y + dy;
+  });
+
+  canvas.addEventListener("pointerup", (event) => {
+    if (!state.dragActive) return;
+    state.dragActive = false;
+    canvas.releasePointerCapture(event.pointerId);
+    state.dragStart = null;
+    state.dragBaseline = null;
+  });
+
+  canvas.addEventListener("pointercancel", () => {
+    state.dragActive = false;
+    state.dragStart = null;
+    state.dragBaseline = null;
+  });
+}
+
 if (canvas) canvas.addEventListener("click", (event) => {
+  if (state.dragStart && state.dragStart.moved) return;
   const rect = canvas.getBoundingClientRect();
   const x = event.clientX - rect.left;
   const y = event.clientY - rect.top;
+  const worldX = (x - state.viewOffset.x - state.dragOffset.x) / state.viewScale;
+  const worldY = (y - state.viewOffset.y - state.dragOffset.y) / state.viewScale;
   let picked = null;
   let minDist = 999;
   for (const student of state.students) {
     const pos = state.positions.get(student.id);
     if (!pos) continue;
-    const dx = x - pos.x;
-    const dy = y - pos.y;
+    const dx = worldX - pos.x;
+    const dy = worldY - pos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < 10 && dist < minDist) {
+    if (dist < 10 / state.viewScale && dist < minDist) {
       picked = student;
       minDist = dist;
     }
@@ -1240,9 +1523,12 @@ if (canvas) canvas.addEventListener("click", (event) => {
   state.selectedId = picked ? picked.id : null;
   renderStarPanel(state.selectedId);
   if (state.selectedId) {
-    positionStarPanel(x, y);
+    const pos = state.positions.get(state.selectedId);
+    if (pos) {
+      const screenPos = getScreenPosition(pos);
+      positionStarPanel(screenPos.x, screenPos.y);
+    }
   }
-  drawScene();
 });
 
 if (starPanelClose) {

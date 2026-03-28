@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import StarSection from "../components/StarSection.astro";
 ---
 
-<BaseLayout title="2017级1班 · 学生列表">
+<BaseLayout title="2023级1班 · 学生列表">
   <div id="pageStack" class="hidden">
     <StarSection hint="上滑进入星空 · 下滑回到学生列表" />
     <section class="hero" id="pageMain">
@@ -25,7 +25,7 @@ import StarSection from "../components/StarSection.astro";
         </article>
       </section>
 
-      <aside class="sidebar drawer" id="sidebarDrawer" aria-hidden="true">
+      <aside class="sidebar drawer" id="sidebarDrawer" aria-hidden="true" inert>
         <section class="panel-section card" id="meSection">
           <h3>我的资料</h3>
           <div class="form-grid">
