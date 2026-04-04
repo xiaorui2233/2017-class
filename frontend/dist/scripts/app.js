@@ -158,7 +158,7 @@ function updateAuthUI() {
   if (openAuth) openAuth.style.display = loggedIn ? "none" : "";
   if (logoutBtn) logoutBtn.style.display = loggedIn ? "" : "none";
   if (!loggedIn) {
-    setStatus("未登录");
+    setStatus("\u672a\u767b\u5f55");
     if (notificationBadge) notificationBadge.classList.add("hidden");
   }
 }
@@ -1185,7 +1185,7 @@ async function loginWithToken(token) {
     localStorage.setItem("class_token", res.token);
     state.me = res.student;
     fillMe();
-    setStatus(`已登录：${state.me.name}`);
+    setStatus(`\u5df2\u767b\u5f55\uff1a${state.me.name}`);
     updateAuthUI();
     await loadData();
     await loadNotifications();
@@ -1227,7 +1227,7 @@ async function saveMe() {
     });
 
     state.me = updated;
-    setStatus("资料已更新");
+    setStatus("\u8d44\u6599\u5df2\u66f4\u65b0");
     await loadData();
   } catch (err) {
     setStatus(err.message);
@@ -1249,7 +1249,7 @@ async function addRelation() {
 
     relationType.value = "";
     relationNote.value = "";
-    setStatus("已发送关系请求，等待对方同意");
+    setStatus("\u5df2\u53d1\u9001\u5173\u7cfb\u8bf7\u6c42\uff0c\u7b49\u5f85\u5bf9\u65b9\u540c\u610f");
     await loadPendingRelations();
   } catch (err) {
     setStatus(err.message);
@@ -1725,7 +1725,7 @@ async function init() {
     document.body.classList.remove("constellation-lock");
     pageStack.classList.remove("hidden");
   }
-  setStatus("加载中...");
+  setStatus("\u52a0\u8f7d\u4e2d...");
   let attempts = 0;
   let ready = false;
   while (!ready && attempts < 6) {
@@ -1746,7 +1746,7 @@ async function init() {
     loginToken.value = state.token;
     await loginWithToken(state.token);
   } else {
-    setStatus("请登录后编辑自己的星光资料");
+    setStatus("\u8bf7\u767b\u5f55\u540e\u7f16\u8f91\u81ea\u5df1\u7684\u661f\u5149\u8d44\u6599");
   }
   updateAuthUI();
   if (state.token && !notificationTimer) {

@@ -36,6 +36,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Clean dist
+        working-directory: frontend
+        run: rm -rf dist
+
       - name: Copy uploads into frontend public
         run: |
           if [ -d "assets/uploads" ]; then
