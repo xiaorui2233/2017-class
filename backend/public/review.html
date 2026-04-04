@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>留言审核</title>
+    <style>
+      :root {
+        --bg: #0c1224;
+        --panel: rgba(12, 18, 40, 0.85);
+        --line: rgba(120, 170, 255, 0.22);
+        --text: #e6efff;
+        --muted: rgba(200, 220, 255, 0.7);
+        --accent: #4f7bff;
+        --danger: #ef5a5a;
+        --ok: #3fbf8f;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: radial-gradient(circle at 20% 20%, rgba(50, 80, 170, 0.35), transparent 55%),
+          radial-gradient(circle at 80% 0%, rgba(90, 140, 255, 0.25), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 24px;
+      }
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        background: var(--panel);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+        border: 1px solid var(--line);
+      }
+      h1 {
+        margin-top: 0;
+      }
+      label {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      input, textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-family: inherit;
+        margin: 6px 0 14px;
+        background: rgba(10, 16, 36, 0.9);
+        color: var(--text);
+      }
+      button {
+        border: none;
+        background: var(--accent);
+        color: white;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-right: 8px;
+        font-size: 12px;
+      }
+      .ghost {
+        background: rgba(130, 150, 200, 0.2);
+      }
+      .danger {
+        background: var(--danger);
+      }
+      .success {
+        background: var(--ok);
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .section {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+      .list {
+        display: grid;
+        gap: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: rgba(9, 13, 30, 0.7);
+        display: grid;
+        gap: 10px;
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .content {
+        line-height: 1.6;
+        font-size: 14px;
+      }
+      .media {
+        width: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(120, 170, 255, 0.2);
+        background: rgba(8, 12, 26, 0.6);
+      }
+      .media img {
+        width: 100%;
+        display: block;
+        max-height: 320px;
+        object-fit: cover;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .reason {
+        display: grid;
+        gap: 6px;
+      }
+      @media (max-width: 720px) {
+        body { padding: 12px; }
+        .container { padding: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>留言审核</h1>
+      <p class="hint">使用审核员 Token 登录，留言与图片一同审核。</p>
+
+      <label>Token</label>
+      <input id="reviewToken" type="password" placeholder="请输入审核员 Token" />
+      <button id="loadBtn">加载待审核</button>
+      <span id="status" class="hint"></span>
+
+      <div class="section">
+        <h2>待审核列表</h2>
+        <div class="list" id="messageList"></div>
+      </div>
+    </div>
+
+    <script>
+      const reviewToken = document.getElementById("reviewToken");
+      const loadBtn = document.getElementById("loadBtn");
+      const statusEl = document.getElementById("status");
+      const messageList = document.getElementById("messageList");
+
+      function saveToken() {
+        localStorage.setItem("review_token", reviewToken.value.trim());
+      }
+
+      function loadToken() {
+        reviewToken.value = localStorage.getItem("review_token") || "";
+      }
+
+      async function api(path, options = {}) {
+        const token = reviewToken.value.trim();
+        if (!token) throw new Error("请先输入 Token");
+        const headers = options.headers || {};
+        headers.Authorization = `Bearer ${token}`;
+        const res = await fetch(path, { ...options, headers });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "请求失败");
+        }
+        return res.json();
+      }
+
+      function renderCard(msg) {
+        const card = document.createElement("div");
+        card.className = "card";
+        const name = msg.student_name || msg.student_id || "";
+        const date = (msg.created_at || "").split("T")[0] || "";
+        const who = msg.is_anonymous ? "匿名" : name;
+        const nickname = msg.nickname ? `（${msg.nickname}）` : "";
+        const subtitle = msg.subtitle ? `<div class="meta">配文：${msg.subtitle}</div>` : "";
+        card.innerHTML = `
+          <div class="card-head">
+            <strong>#${msg.id} · ${who}${nickname}</strong>
+            <span class="meta">${date}</span>
+          </div>
+          ${subtitle}
+          <div class="content">${msg.content || ""}</div>
+          ${msg.image_url ? `<div class="media"><img src="${msg.image_url}" alt="upload" /></div>` : ""}
+          <div class="reason">
+            <label>拒绝原因（可选）</label>
+            <textarea rows="2" placeholder="如：包含不适当内容/图片不清晰/与主题无关"></textarea>
+          </div>
+          <div class="actions">
+            <button class="success" data-approve>通过</button>
+            <button class="danger" data-reject>拒绝</button>
+          </div>
+        `;
+
+        const reasonInput = card.querySelector("textarea");
+        card.querySelector("[data-approve]").addEventListener("click", async () => {
+          await api(`/review/messages/${msg.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "approved" })
+          });
+          await loadMessages();
+        });
+        card.querySelector("[data-reject]").addEventListener("click", async () => {
+          await api(`/review/messages/${msg.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "rejected", reason: reasonInput.value.trim() })
+          });
+          await loadMessages();
+        });
+        return card;
+      }
+
+      async function loadMessages() {
+        const data = await api("/review/messages");
+        messageList.innerHTML = "";
+        data.forEach((msg) => messageList.appendChild(renderCard(msg)));
+        statusEl.textContent = `已加载 ${data.length} 条待审核留言`;
+      }
+
+      async function loadAll() {
+        try {
+          saveToken();
+          statusEl.textContent = "加载中...";
+          await loadMessages();
+        } catch (err) {
+          statusEl.textContent = err.message;
+        }
+      }
+
+      loadBtn.addEventListener("click", loadAll);
+      loadToken();
+      if (reviewToken.value.trim()) {
+        loadAll();
+      }
+    </script>
+  </body>
+</html>
