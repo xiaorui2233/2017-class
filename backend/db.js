@@ -210,6 +210,12 @@ async function initDb() {
       await run(`ALTER TABLE relationships ADD COLUMN IF NOT EXISTS approved_at TEXT`);
     } catch (e) {}
     await run(`UPDATE relationships SET status = 'accepted' WHERE status IS NULL`);
+    try {
+      await run(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`);
+    } catch (e) {}
+    try {
+      await run(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS rejected_reason TEXT`);
+    } catch (e) {}
   } else {
     await run("PRAGMA foreign_keys = ON");
 
@@ -316,6 +322,8 @@ async function initDb() {
     await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN requested_by TEXT");
     await addColumnIfMissing("ALTER TABLE relationships ADD COLUMN approved_at TEXT");
     await run("UPDATE relationships SET status = 'accepted' WHERE status IS NULL");
+    await addColumnIfMissing("ALTER TABLE accounts ADD COLUMN role TEXT DEFAULT 'user'");
+    await addColumnIfMissing("ALTER TABLE messages ADD COLUMN rejected_reason TEXT");
   }
 }
 

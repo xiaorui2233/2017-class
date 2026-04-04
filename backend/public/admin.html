@@ -191,6 +191,13 @@
       </div>
 
       <div class="section">
+        <h2>审核员管理</h2>
+        <p class="hint">为已有账号分配审核权限（reviewer），无需 ADMIN_KEY 的页面访问权。</p>
+        <div class="list" id="reviewerList"></div>
+        <span id="reviewerStatus" class="hint"></span>
+      </div>
+
+      <div class="section">
         <h2>邀请码管理</h2>
         <div class="row">
           <div>
@@ -248,6 +255,8 @@
       const inviteList = document.getElementById("inviteList");
       const inviteStatus = document.getElementById("inviteStatus");
       const messageList = document.getElementById("messageList");
+      const reviewerList = document.getElementById("reviewerList");
+      const reviewerStatus = document.getElementById("reviewerStatus");
       const tokenList = document.getElementById("tokenList");
       const tokenStatus = document.getElementById("tokenStatus");
       const uploadGrid = document.getElementById("uploadGrid");
@@ -492,6 +501,41 @@
         }
       }
 
+      async function loadReviewers() {
+        try {
+          const data = await api("/admin/reviewers");
+          reviewerList.innerHTML = "";
+          data.forEach((row) => {
+            const item = document.createElement("div");
+            item.className = "list-item";
+            const role = row.role || "user";
+            item.innerHTML = `
+              <span>${row.name || ""} (${row.id})</span>
+              <div>
+                <select data-role="${row.id}">
+                  <option value="user" ${role === "user" ? "selected" : ""}>普通</option>
+                  <option value="reviewer" ${role === "reviewer" ? "selected" : ""}>审核员</option>
+                </select>
+              </div>
+            `;
+            const select = item.querySelector("select");
+            select.addEventListener("change", async (e) => {
+              const value = e.target.value;
+              await api(`/admin/reviewers/${row.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ role: value })
+              });
+              reviewerStatus.textContent = `已更新 ${row.name || row.id} 为 ${value}`;
+            });
+            reviewerList.appendChild(item);
+          });
+          reviewerStatus.textContent = `已加载 ${data.length} 条记录`;
+        } catch (err) {
+          reviewerStatus.textContent = err.message;
+        }
+      }
+
       async function createInviteForStudent() {
         try {
           const payload = { studentId: inviteStudentId.value.trim() };
@@ -546,10 +590,11 @@
               await loadMessages();
             });
             row.querySelector("[data-reject]").addEventListener("click", async (e) => {
+              const reason = prompt("请输入拒绝原因（可选）") || "";
               await api(`/admin/messages/${e.target.dataset.reject}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "rejected" })
+                body: JSON.stringify({ status: "rejected", reason })
               });
               await loadMessages();
             });
@@ -605,6 +650,7 @@
         loadMessages();
         loadTokens();
         loadUploads();
+        loadReviewers();
       });
 
       loadKey();
@@ -615,6 +661,7 @@
         loadMessages();
         loadTokens();
         loadUploads();
+        loadReviewers();
       }
 
       setInterval(() => {

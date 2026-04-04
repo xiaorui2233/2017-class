@@ -300,10 +300,10 @@ async function authMiddleware(req, res, next) {
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: "Missing token" });
 
-  const account = await get("SELECT student_id, token FROM accounts WHERE token = ?", [token]);
+  const account = await get("SELECT student_id, token, role FROM accounts WHERE token = ?", [token]);
   if (!account) return res.status(401).json({ error: "Invalid token" });
 
-  req.auth = { studentId: account.student_id, token: account.token };
+  req.auth = { studentId: account.student_id, token: account.token, role: account.role || "user" };
   return next();
 }
 
@@ -311,6 +311,13 @@ function adminMiddleware(req, res, next) {
   const key = req.headers["x-admin-key"];
   if (!ADMIN_KEY || key !== ADMIN_KEY) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+  return next();
+}
+
+function reviewerMiddleware(req, res, next) {
+  if (!req.auth || req.auth.role !== "reviewer") {
+    return res.status(403).json({ error: "Forbidden" });
   }
   return next();
 }
@@ -434,7 +441,7 @@ app.get("/admin/students", adminMiddleware, async (req, res) => {
 app.get("/admin/accounts", adminMiddleware, async (req, res) => {
   try {
     const rows = await all(
-      `SELECT students.id, students.name, accounts.token, accounts.last_login_at
+      `SELECT students.id, students.name, accounts.token, accounts.last_login_at, accounts.role
        FROM students
        LEFT JOIN accounts ON students.id = accounts.student_id
        ${getOrderByName('students.name')}`
@@ -578,6 +585,44 @@ app.delete("/admin/invites/:code", adminMiddleware, async (req, res) => {
   try {
     await run("DELETE FROM invites WHERE code = ?", [req.params.code]);
     return res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/admin/reviewers", adminMiddleware, async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT students.id, students.name, accounts.role
+       FROM students
+       LEFT JOIN accounts ON students.id = accounts.student_id
+       ${getOrderByName('students.name')}`
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/admin/reviewers/:studentId", adminMiddleware, async (req, res) => {
+  try {
+    const { role } = req.body || {};
+    if (!role || !["user", "reviewer"].includes(role)) {
+      return res.status(400).json({ error: "invalid role" });
+    }
+    const account = await get("SELECT student_id FROM accounts WHERE student_id = ?", [req.params.studentId]);
+    if (!account) return res.status(404).json({ error: "Account not found" });
+    await run("UPDATE accounts SET role = ? WHERE student_id = ?", [role, req.params.studentId]);
+    const updated = await get(
+      `SELECT students.id, students.name, accounts.role
+       FROM students
+       LEFT JOIN accounts ON students.id = accounts.student_id
+       WHERE students.id = ?`,
+      [req.params.studentId]
+    );
+    return res.json(updated);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });
@@ -808,14 +853,16 @@ app.get("/admin/messages", adminMiddleware, async (req, res) => {
 
 app.put("/admin/messages/:id", adminMiddleware, async (req, res) => {
   try {
-    const { status } = req.body || {};
+    const { status, reason } = req.body || {};
     if (!status || !["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "invalid status" });
     }
     const approvedAt = status === "approved" ? nowIso() : null;
-    await run("UPDATE messages SET status = ?, approved_at = ? WHERE id = ?", [
+    const rejectedReason = status === "rejected" ? (reason || null) : null;
+    await run("UPDATE messages SET status = ?, approved_at = ?, rejected_reason = ? WHERE id = ?", [
       status,
       approvedAt,
+      rejectedReason,
       req.params.id,
     ]);
     const msg = await get("SELECT * FROM messages WHERE id = ?", [req.params.id]);
@@ -829,16 +876,99 @@ app.put("/admin/messages/:id", adminMiddleware, async (req, res) => {
           link: "/2017-class/class/#guestbook",
         });
       } else {
+        const reasonText = rejectedReason ? `原因：${rejectedReason}` : "可重新提交后再试。";
         await createNotification({
           studentId: msg.student_id,
           type: "message_rejected",
           title: "留言未通过审核",
-          content: "你的留言未通过审核，可重新提交。",
+          content: `你的留言未通过审核。${reasonText}`,
           link: "/2017-class/class/#guestbook",
         });
       }
     }
     return res.json(msg);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/review/messages", authMiddleware, reviewerMiddleware, async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT messages.id, messages.student_id, students.name as student_name, messages.nickname,
+              messages.subtitle, messages.content, messages.image_url, messages.is_anonymous,
+              messages.status, messages.created_at
+       FROM messages
+       LEFT JOIN students ON students.id = messages.student_id
+       WHERE messages.status = 'pending'
+       ORDER BY messages.created_at DESC`
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/review/messages/:id", authMiddleware, reviewerMiddleware, async (req, res) => {
+  try {
+    const { status, reason } = req.body || {};
+    if (!status || !["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "invalid status" });
+    }
+    const existing = await get("SELECT * FROM messages WHERE id = ?", [req.params.id]);
+    if (!existing) return res.status(404).json({ error: "Not found" });
+    if (existing.status !== "pending") {
+      return res.status(409).json({ error: "Not pending" });
+    }
+    const approvedAt = status === "approved" ? nowIso() : null;
+    const rejectedReason = status === "rejected" ? (reason || null) : null;
+    await run("UPDATE messages SET status = ?, approved_at = ?, rejected_reason = ? WHERE id = ?", [
+      status,
+      approvedAt,
+      rejectedReason,
+      req.params.id,
+    ]);
+    const msg = await get("SELECT * FROM messages WHERE id = ?", [req.params.id]);
+    if (msg && msg.student_id) {
+      if (status === "approved") {
+        await createNotification({
+          studentId: msg.student_id,
+          type: "message_approved",
+          title: "留言已通过审核",
+          content: "你的留言已通过审核并展示。",
+          link: "/2017-class/class/#guestbook",
+        });
+      } else {
+        const reasonText = rejectedReason ? `原因：${rejectedReason}` : "可重新提交后再试。";
+        await createNotification({
+          studentId: msg.student_id,
+          type: "message_rejected",
+          title: "留言未通过审核",
+          content: `你的留言未通过审核。${reasonText}`,
+          link: "/2017-class/class/#guestbook",
+        });
+      }
+    }
+    return res.json(msg);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/review/uploads", authMiddleware, reviewerMiddleware, async (req, res) => {
+  try {
+    const rows = await all(
+      `SELECT messages.id, messages.student_id, students.name as student_name,
+              messages.image_url, messages.created_at, messages.status
+       FROM messages
+       LEFT JOIN students ON students.id = messages.student_id
+       WHERE messages.status = 'pending' AND messages.image_url IS NOT NULL
+       ORDER BY messages.created_at DESC`
+    );
+    return res.json(rows);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });
