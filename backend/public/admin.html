@@ -160,6 +160,42 @@
       </div>
 
       <div class="section">
+        <h2>公告管理</h2>
+        <div class="row">
+          <div>
+            <label>公告列表</label>
+            <div class="list" id="announcementList"></div>
+          </div>
+          <div>
+            <label>编辑/新增公告</label>
+            <input id="announcementId" type="text" placeholder="ID（自动）" disabled />
+            <input id="announcementTitle" type="text" placeholder="标题" />
+            <textarea id="announcementContent" rows="4" placeholder="内容"></textarea>
+            <div class="row">
+              <div>
+                <label>开始时间</label>
+                <input id="announcementStart" type="datetime-local" />
+              </div>
+              <div>
+                <label>结束时间</label>
+                <input id="announcementEnd" type="datetime-local" />
+              </div>
+            </div>
+            <label>状态</label>
+            <select id="announcementActive">
+              <option value="1">启用</option>
+              <option value="0">停用</option>
+            </select>
+            <button id="createAnnouncementBtn">新增</button>
+            <button id="updateAnnouncementBtn">保存修改</button>
+            <button class="ghost" id="clearAnnouncementBtn">清空</button>
+            <button class="danger" id="deleteAnnouncementBtn">删除</button>
+            <span id="announcementStatus" class="hint"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
         <h2>学生管理</h2>
         <div class="row">
           <div>
@@ -239,6 +275,15 @@
       const postsList = document.getElementById("postsList");
       const albumsList = document.getElementById("albumsList");
       const contentStatus = document.getElementById("contentStatus");
+
+      const announcementList = document.getElementById("announcementList");
+      const announcementId = document.getElementById("announcementId");
+      const announcementTitle = document.getElementById("announcementTitle");
+      const announcementContent = document.getElementById("announcementContent");
+      const announcementStart = document.getElementById("announcementStart");
+      const announcementEnd = document.getElementById("announcementEnd");
+      const announcementActive = document.getElementById("announcementActive");
+      const announcementStatus = document.getElementById("announcementStatus");
 
       const studentList = document.getElementById("studentList");
       const studentId = document.getElementById("studentId");
@@ -356,6 +401,107 @@
           contentStatus.textContent = "已保存";
         } catch (err) {
           contentStatus.textContent = err.message;
+        }
+      }
+
+      function fillAnnouncementForm(item) {
+        announcementId.value = item.id || "";
+        announcementTitle.value = item.title || "";
+        announcementContent.value = item.content || "";
+        announcementStart.value = (item.start_at || "").replace("Z", "").slice(0, 16);
+        announcementEnd.value = (item.end_at || "").replace("Z", "").slice(0, 16);
+        announcementActive.value = item.is_active ? "1" : "0";
+      }
+
+      function clearAnnouncementForm() {
+        announcementId.value = "";
+        announcementTitle.value = "";
+        announcementContent.value = "";
+        announcementStart.value = "";
+        announcementEnd.value = "";
+        announcementActive.value = "1";
+        announcementStatus.textContent = "";
+      }
+
+      async function loadAnnouncements() {
+        try {
+          const data = await api("/admin/announcements");
+          announcementList.innerHTML = "";
+          data.forEach((item) => {
+            const row = document.createElement("div");
+            row.className = "list-item";
+            const status = item.is_active ? "启用" : "停用";
+            const start = item.start_at ? item.start_at.split("T")[0] : "不限";
+            const end = item.end_at ? item.end_at.split("T")[0] : "不限";
+            row.innerHTML = `
+              <span>#${item.id} · ${status} · ${item.title} · ${start} ~ ${end}</span>
+              <div>
+                <button class="ghost inline-btn" data-edit="${item.id}">编辑</button>
+                <button class="danger inline-btn" data-del="${item.id}">删除</button>
+              </div>
+            `;
+            row.querySelector("[data-edit]").addEventListener("click", () => fillAnnouncementForm(item));
+            row.querySelector("[data-del]").addEventListener("click", async (e) => {
+              const id = e.target.getAttribute("data-del");
+              await api(`/admin/announcements/${id}`, { method: "DELETE" });
+              announcementStatus.textContent = `已删除公告 #${id}`;
+              clearAnnouncementForm();
+              await loadAnnouncements();
+            });
+            announcementList.appendChild(row);
+          });
+          announcementStatus.textContent = `已加载 ${data.length} 条公告`;
+        } catch (err) {
+          announcementStatus.textContent = err.message;
+        }
+      }
+
+      async function createAnnouncement() {
+        try {
+          const payload = {
+            title: announcementTitle.value.trim(),
+            content: announcementContent.value.trim(),
+            start_at: announcementStart.value || null,
+            end_at: announcementEnd.value || null,
+            is_active: announcementActive.value === "1",
+          };
+          const res = await api("/admin/announcements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          announcementStatus.textContent = `已新增公告 #${res.id}`;
+          fillAnnouncementForm(res);
+          await loadAnnouncements();
+        } catch (err) {
+          announcementStatus.textContent = err.message;
+        }
+      }
+
+      async function updateAnnouncement() {
+        try {
+          const id = announcementId.value.trim();
+          if (!id) {
+            announcementStatus.textContent = "请先选择公告";
+            return;
+          }
+          const payload = {
+            title: announcementTitle.value.trim(),
+            content: announcementContent.value.trim(),
+            start_at: announcementStart.value || null,
+            end_at: announcementEnd.value || null,
+            is_active: announcementActive.value === "1",
+          };
+          const res = await api(`/admin/announcements/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          announcementStatus.textContent = `已更新公告 #${res.id}`;
+          fillAnnouncementForm(res);
+          await loadAnnouncements();
+        } catch (err) {
+          announcementStatus.textContent = err.message;
         }
       }
 
@@ -636,6 +782,20 @@
         loadContent();
       });
       document.getElementById("saveContentBtn").addEventListener("click", saveContent);
+      document.getElementById("createAnnouncementBtn").addEventListener("click", createAnnouncement);
+      document.getElementById("updateAnnouncementBtn").addEventListener("click", updateAnnouncement);
+      document.getElementById("clearAnnouncementBtn").addEventListener("click", clearAnnouncementForm);
+      document.getElementById("deleteAnnouncementBtn").addEventListener("click", async () => {
+        const id = announcementId.value.trim();
+        if (!id) {
+          announcementStatus.textContent = "请先选择公告";
+          return;
+        }
+        await api(`/admin/announcements/${id}`, { method: "DELETE" });
+        announcementStatus.textContent = `已删除公告 #${id}`;
+        clearAnnouncementForm();
+        await loadAnnouncements();
+      });
       document.getElementById("createStudentBtn").addEventListener("click", createStudent);
       document.getElementById("updateStudentBtn").addEventListener("click", updateStudent);
       document.getElementById("deleteStudentBtn").addEventListener("click", deleteStudent);
@@ -645,6 +805,7 @@
       adminKey.addEventListener("change", () => {
         saveKey();
         loadContent();
+        loadAnnouncements();
         loadStudents();
         loadInvites();
         loadMessages();
@@ -656,6 +817,7 @@
       loadKey();
       if (adminKey.value.trim()) {
         loadContent();
+        loadAnnouncements();
         loadStudents();
         loadInvites();
         loadMessages();
@@ -667,6 +829,7 @@
       setInterval(() => {
         if (!adminKey.value.trim()) return;
         loadContent();
+        loadAnnouncements();
         loadStudents();
         loadInvites();
         loadMessages();

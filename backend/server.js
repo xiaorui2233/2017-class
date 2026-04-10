@@ -63,6 +63,26 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function normalizeDateInput(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return text;
+  return d.toISOString();
+}
+
+function normalizeActive(value, fallback = 1) {
+  if (value === undefined) return fallback;
+  if (value === null) return 0;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (typeof value === "number") return value ? 1 : 0;
+  const text = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(text)) return 1;
+  if (["0", "false", "no", "off"].includes(text)) return 0;
+  return fallback;
+}
+
 function isEmail(value) {
   if (!value || typeof value !== "string") return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -600,6 +620,111 @@ app.get("/admin/reviewers", adminMiddleware, async (req, res) => {
        ${getOrderByName('students.name')}`
     );
     return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/announcements", async (req, res) => {
+  try {
+    const now = nowIso();
+    const rows = await all(
+      `SELECT * FROM announcements
+       WHERE is_active = 1
+         AND (start_at IS NULL OR start_at <= ?)
+         AND (end_at IS NULL OR end_at >= ?)
+       ORDER BY created_at DESC`,
+      [now, now]
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/announcements/:id", async (req, res) => {
+  try {
+    const row = await get("SELECT * FROM announcements WHERE id = ?", [req.params.id]);
+    if (!row) return res.status(404).json({ error: "Not found" });
+    return res.json(row);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/admin/announcements", adminMiddleware, async (req, res) => {
+  try {
+    const rows = await all("SELECT * FROM announcements ORDER BY created_at DESC");
+    return res.json(rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/admin/announcements", adminMiddleware, async (req, res) => {
+  try {
+    const { title, content, start_at, end_at, is_active } = req.body || {};
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ error: "title is required" });
+    }
+    if (!content || typeof content !== "string") {
+      return res.status(400).json({ error: "content is required" });
+    }
+    const now = nowIso();
+    const active = normalizeActive(is_active, 1);
+    const startAt = normalizeDateInput(start_at);
+    const endAt = normalizeDateInput(end_at);
+    const result = await run(
+      `INSERT INTO announcements (title, content, is_active, start_at, end_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [title.trim(), content.trim(), active, startAt, endAt, now, now]
+    );
+    const row = await get("SELECT * FROM announcements WHERE id = ?", [result.lastID]);
+    return res.json(row);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/admin/announcements/:id", adminMiddleware, async (req, res) => {
+  try {
+    const allowed = ["title", "content", "start_at", "end_at", "is_active"];
+    const updates = [];
+    const values = [];
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) {
+        let value = req.body[key];
+        if (key === "is_active") value = normalizeActive(value, 0);
+        if (key === "start_at" || key === "end_at") value = normalizeDateInput(value);
+        updates.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+    if (updates.length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+    updates.push("updated_at = ?");
+    values.push(nowIso());
+    values.push(req.params.id);
+    await run(`UPDATE announcements SET ${updates.join(", ")} WHERE id = ?`, values);
+    const row = await get("SELECT * FROM announcements WHERE id = ?", [req.params.id]);
+    if (!row) return res.status(404).json({ error: "Not found" });
+    return res.json(row);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.delete("/admin/announcements/:id", adminMiddleware, async (req, res) => {
+  try {
+    await run("DELETE FROM announcements WHERE id = ?", [req.params.id]);
+    return res.json({ ok: true });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Server error" });
