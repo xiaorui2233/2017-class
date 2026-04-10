@@ -2,6 +2,7 @@
 import "../styles/global.css";
 const { title = "2023级1班 · 毕业纪念册" } = Astro.props;
 const basePath = "/2017-class/";
+const buildId = new Date().toISOString().replace(/[-:TZ.]/g, "");
 ---
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -109,6 +110,6 @@ const basePath = "/2017-class/";
       </div>
     </div>
 
-    <script type="module" src={`${basePath}scripts/app.js`}></script>
+    <script type="module" src={`${basePath}scripts/app.js?v=${buildId}`}></script>
   </body>
 </html>

@@ -1,4 +1,12 @@
- $args[0].Value + $insert 
+const CONFIG = {
+  API_BASE_URL: (() => {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:4000";
+    }
+    return "https://two017-class.onrender.com";
+  })(),
+};
 
 const state = {
   students: [],
@@ -150,7 +158,7 @@ function updateAuthUI() {
   if (openAuth) openAuth.style.display = loggedIn ? "none" : "";
   if (logoutBtn) logoutBtn.style.display = loggedIn ? "" : "none";
   if (!loggedIn) {
-    setStatus(TEXT.loggedOut);
+    setStatus("\u672a\u767b\u5f55");
     if (notificationBadge) notificationBadge.classList.add("hidden");
   }
 }
@@ -162,7 +170,7 @@ function showLightbox() {
   if (!albumItems.length) return;
   const item = albumItems[albumIndex];
   lightboxImage.src = item.url;
-  lightboxMeta.textContent = `${item.title || ""}${item.date ? " ¡¤ " + item.date : ""}`;
+  lightboxMeta.textContent = `${item.title || ""}${item.date ? " Â· " + item.date : ""}`;
 }
 
 function openLightbox(index) {
@@ -207,11 +215,11 @@ function closeNotificationModal() {
 
 function openDrawer() {
   if (!window.location.pathname.includes("/students")) {
-    showToast("ÌáÊ¾", "×ÊÁÏ/¹ØÏµ½öÔÚ Students Ò³Ãæ¿ÉÓÃ¡£");
+    showToast("æç¤º", "èµ„æ–™/å…³ç³»ä»…åœ¨ Students é¡µé¢å¯ç”¨ã€‚");
     return;
   }
   if (!sidebarDrawer || !closeProfile) {
-    showToast("ÌáÊ¾", "µ±Ç°Ò³ÃæÎ´¼ÓÔØ×ÊÁÏÃæ°å¡£");
+    showToast("æç¤º", "å½“å‰é¡µé¢æœªåŠ è½½èµ„æ–™é¢æ¿ã€‚");
     return;
   }
   sidebarDrawer.removeAttribute("inert");
@@ -248,7 +256,7 @@ function showToast(title, message) {
   const toast = document.createElement("div");
   toast.className = "toast";
   toast.innerHTML = `
-    <div class="toast-title">${title || "ÌáÊ¾"}</div>
+    <div class="toast-title">${title || "æç¤º"}</div>
     <div>${message || ""}</div>
   `;
   toastStack.appendChild(toast);
@@ -761,11 +769,11 @@ function renderStarPanel(studentId) {
   const metaParts = [];
   if (student?.tags) metaParts.push(student.tags);
   if (student?.contact) metaParts.push(student.contact);
-  metaParts.push(`¹ØÏµ ${links.length} Ìõ`);
-  starPanelMeta.textContent = metaParts.filter(Boolean).join(" ¡¤ ");
+  metaParts.push(`å…³ç³» ${links.length} æ¡`);
+  starPanelMeta.textContent = metaParts.filter(Boolean).join(" Â· ");
 
   if (!links.length) {
-    starPanelList.innerHTML = "<div class='star-panel-item'>ÔİÎŞ¹ØÏµ</div>";
+    starPanelList.innerHTML = "<div class='star-panel-item'>æš‚æ— å…³ç³»</div>";
     return;
   }
   const maxItems = state.lowPower ? 12 : 20;
@@ -783,15 +791,15 @@ function renderStarPanel(studentId) {
     name.textContent = other ? other.name : otherId;
     const type = document.createElement("span");
     type.className = "relation-tag";
-    type.textContent = rel.type || "¹ØÏµ";
+    type.textContent = rel.type || "å…³ç³»";
     item.appendChild(name);
-    item.appendChild(document.createTextNode(" ¡¤ "));
+    item.appendChild(document.createTextNode(" Â· "));
     item.appendChild(type);
     if (rel.note) {
       const note = document.createElement("span");
       note.className = "relation-note";
       note.textContent = rel.note;
-      item.appendChild(document.createTextNode(" ¡¤ "));
+      item.appendChild(document.createTextNode(" Â· "));
       item.appendChild(note);
     }
     fragment.appendChild(item);
@@ -800,7 +808,7 @@ function renderStarPanel(studentId) {
     const more = document.createElement("button");
     more.className = "star-panel-more";
     more.type = "button";
-    more.textContent = isExpanded ? `ÊÕÆğ¹ØÏµ (${links.length})` : `²é¿´¸ü¶à¹ØÏµ (${links.length})`;
+    more.textContent = isExpanded ? `æ”¶èµ·å…³ç³» (${links.length})` : `æŸ¥çœ‹æ›´å¤šå…³ç³» (${links.length})`;
     more.addEventListener("click", () => {
       state.panelExpandedId = isExpanded ? null : studentId;
       renderStarPanel(studentId);
@@ -816,9 +824,9 @@ function refreshStudentList() {
   state.students.forEach((student) => {
     const card = document.createElement("div");
     card.className = "student-card";
-    const bio = student.bio || "ÔİÎŞ¼ò½é";
-    const contact = student.contact || "ÔİÎŞÁªÏµ·½Ê½";
-    const tags = student.tags || "ÔİÎŞ±êÇ©";
+    const bio = student.bio || "æš‚æ— ç®€ä»‹";
+    const contact = student.contact || "æš‚æ— è”ç³»æ–¹å¼";
+    const tags = student.tags || "æš‚æ— æ ‡ç­¾";
     card.innerHTML = `
       <strong>${student.name}</strong>
       <div>${student.tags || ""}</div>
@@ -858,8 +866,8 @@ function refreshRelations() {
     const item = document.createElement("div");
     item.className = "relation-item";
     item.innerHTML = `
-      <span>${target ? target.name : rel.to_student_id} ¡¤ ${rel.type || "¹ØÏµ"}</span>
-      <button data-id="${rel.id}">É¾³ı</button>
+      <span>${target ? target.name : rel.to_student_id} Â· ${rel.type || "å…³ç³»"}</span>
+      <button data-id="${rel.id}">åˆ é™¤</button>
     `;
     item.querySelector("button").addEventListener("click", async () => {
       await deleteRelation(rel.id);
@@ -881,11 +889,11 @@ async function loadPendingRelations() {
       item.className = "request-item";
       item.innerHTML = `
         <strong>${other ? other.name : otherId}</strong>
-        <div>${rel.type || "¹ØÏµÇëÇó"} ${rel.note ? "¡¤ " + rel.note : ""}</div>
+        <div>${rel.type || "å…³ç³»è¯·æ±‚"} ${rel.note ? "Â· " + rel.note : ""}</div>
         <div class="request-actions">
-          ${isIncoming ? `<button data-accept="${rel.id}">Í¬Òâ</button>` : ""}
-          ${isIncoming ? `<button class="ghost" data-reject="${rel.id}">¾Ü¾ø</button>` : ""}
-          ${!isIncoming ? `<span class="hint">ÒÑ·¢ËÍ£¬µÈ´ı¶Ô·½Í¬Òâ</span>` : ""}
+          ${isIncoming ? `<button data-accept="${rel.id}">åŒæ„</button>` : ""}
+          ${isIncoming ? `<button class="ghost" data-reject="${rel.id}">æ‹’ç»</button>` : ""}
+          ${!isIncoming ? `<span class="hint">å·²å‘é€ï¼Œç­‰å¾…å¯¹æ–¹åŒæ„</span>` : ""}
         </div>
       `;
       if (isIncoming) {
@@ -963,7 +971,7 @@ function renderContent(data) {
       div.className = "album-item";
       div.innerHTML = `
         <img class="album-img" src="${item.url}" alt="${item.title || ""}" />
-        <div class="album-caption">${item.title || ""} ${item.date ? "¡¤ " + item.date : ""}</div>
+        <div class="album-caption">${item.title || ""} ${item.date ? "Â· " + item.date : ""}</div>
       `;
       div.addEventListener("click", () => openLightbox(index));
       albumGrid.appendChild(div);
@@ -1019,7 +1027,7 @@ async function loadMessages() {
     data.forEach((msg) => {
       const card = document.createElement("div");
       card.className = "message-card";
-      const author = msg.is_anonymous ? "ÄäÃûÍ¬Ñ§" : (msg.student_name || msg.student_id);
+      const author = msg.is_anonymous ? "åŒ¿ååŒå­¦" : (msg.student_name || msg.student_id);
       const comments = Array.isArray(msg.comments) ? msg.comments : [];
       const commentItems = comments
         .map((c) => {
@@ -1031,7 +1039,7 @@ async function loadMessages() {
               <div class="comment-head">
                 <strong>${name}</strong>
                 <span>${date}</span>
-                ${canDelete ? `<button class="ghost" data-delete="${c.id}" data-message="${msg.id}">É¾³ı</button>` : ""}
+                ${canDelete ? `<button class="ghost" data-delete="${c.id}" data-message="${msg.id}">åˆ é™¤</button>` : ""}
               </div>
               <div class="comment-body">${c.content}</div>
             </div>
@@ -1040,15 +1048,15 @@ async function loadMessages() {
         .join("");
       card.innerHTML = `
         <strong>${author}</strong>
-        <div class="message-meta">${msg.subtitle || ""} ${msg.created_at ? "¡¤ " + msg.created_at.split("T")[0] : ""}</div>
+        <div class="message-meta">${msg.subtitle || ""} ${msg.created_at ? "Â· " + msg.created_at.split("T")[0] : ""}</div>
         <p>${msg.content}</p>
         ${msg.image_url ? `<img src="${msg.image_url}" alt="message" />` : ""}
         <div class="comment-section">
-          <div class="comment-title">ÆÀÂÛ</div>
-          <div class="comment-list">${commentItems || "<div class='comment-empty'>ÔİÎŞÆÀÂÛ</div>"}</div>
+          <div class="comment-title">è¯„è®º</div>
+          <div class="comment-list">${commentItems || "<div class='comment-empty'>æš‚æ— è¯„è®º</div>"}</div>
           <div class="comment-form">
-            <input type="text" placeholder="${state.token ? "Ğ´ÏÂÄãµÄÆÀÂÛ" : "ÇëÏÈµÇÂ¼ºóÆÀÂÛ"}" ${state.token ? "" : "disabled"} />
-            <button ${state.token ? "" : "disabled"} data-submit="${msg.id}">·¢ËÍ</button>
+            <input type="text" placeholder="${state.token ? "å†™ä¸‹ä½ çš„è¯„è®º" : "è¯·å…ˆç™»å½•åè¯„è®º"}" ${state.token ? "" : "disabled"} />
+            <button ${state.token ? "" : "disabled"} data-submit="${msg.id}">å‘é€</button>
           </div>
         </div>
       `;
@@ -1087,7 +1095,7 @@ async function loadMessages() {
   } catch (err) {
     if (msgHint) {
       msgHint.textContent = err.message.includes("Missing token")
-        ? "ÇëÏÈµÇÂ¼ºó²é¿´ÁôÑÔ"
+        ? "è¯·å…ˆç™»å½•åæŸ¥çœ‹ç•™è¨€"
         : err.message;
     }
   }
@@ -1107,7 +1115,7 @@ async function loadNotifications({ toastIfNew } = { toastIfNew: false }) {
     }
     notificationList.innerHTML = "";
     if (!items.length) {
-      notificationList.innerHTML = "<div class='hint'>ÔİÎŞÏûÏ¢</div>";
+      notificationList.innerHTML = "<div class='hint'>æš‚æ— æ¶ˆæ¯</div>";
     }
     items.forEach((note) => {
       const item = document.createElement("div");
@@ -1129,7 +1137,7 @@ async function loadNotifications({ toastIfNew } = { toastIfNew: false }) {
     });
     const newestId = items[0]?.id || null;
     if (toastIfNew && newestId && newestId !== lastNotificationId) {
-      showToast("ĞÂÏûÏ¢", items[0]?.title || "ÄãÓĞĞÂµÄÏûÏ¢");
+      showToast("æ–°æ¶ˆæ¯", items[0]?.title || "ä½ æœ‰æ–°çš„æ¶ˆæ¯");
     }
     if (!lastNotificationId) {
       lastNotificationId = newestId;
@@ -1145,8 +1153,8 @@ async function register() {
   try {
     const name = registerName.value.trim();
     const inviteCode = registerInvite.value.trim();
-    if (!name) throw new Error("ÇëÊäÈëĞÕÃû");
-    if (!inviteCode) throw new Error("ÇëÊäÈëÑûÇëÂë");
+    if (!name) throw new Error("è¯·è¾“å…¥å§“å");
+    if (!inviteCode) throw new Error("è¯·è¾“å…¥é‚€è¯·ç ");
 
     const res = await apiFetch("/auth/register", {
       method: "POST",
@@ -1156,7 +1164,7 @@ async function register() {
 
     state.token = res.token;
     localStorage.setItem("class_token", res.token);
-    tokenHint.textContent = `ÄãµÄToken£º${res.token}`;
+    tokenHint.textContent = `ä½ çš„Tokenï¼š${res.token}`;
     loginToken.value = res.token;
     await loginWithToken(res.token);
     closeModal();
@@ -1177,7 +1185,7 @@ async function loginWithToken(token) {
     localStorage.setItem("class_token", res.token);
     state.me = res.student;
     fillMe();
-    setStatus(`${TEXT.loggedInPrefix}${state.me.name}`);
+    setStatus(`\u5df2\u767b\u5f55\uff1a${state.me.name}`);
     updateAuthUI();
     await loadData();
     await loadNotifications();
@@ -1219,7 +1227,7 @@ async function saveMe() {
     });
 
     state.me = updated;
-    setStatus(TEXT.profileUpdated);
+    setStatus("\u8d44\u6599\u5df2\u66f4\u65b0");
     await loadData();
   } catch (err) {
     setStatus(err.message);
@@ -1228,7 +1236,7 @@ async function saveMe() {
 
 async function addRelation() {
   try {
-    if (!state.me) throw new Error("ÇëÏÈµÇÂ¼");
+    if (!state.me) throw new Error("è¯·å…ˆç™»å½•");
     const toStudentId = relationTo.value;
     const type = relationType.value.trim();
     const note = relationNote.value.trim();
@@ -1241,7 +1249,7 @@ async function addRelation() {
 
     relationType.value = "";
     relationNote.value = "";
-    setStatus(TEXT.relationSent);
+    setStatus("\u5df2\u53d1\u9001\u5173\u7cfb\u8bf7\u6c42\uff0c\u7b49\u5f85\u5bf9\u65b9\u540c\u610f");
     await loadPendingRelations();
   } catch (err) {
     setStatus(err.message);
@@ -1260,7 +1268,7 @@ async function deleteRelation(id) {
 async function submitMessage() {
   try {
     if (!state.token) {
-      msgHint.textContent = "ÇëÏÈµÇÂ¼ºóÁôÑÔ";
+      msgHint.textContent = "è¯·å…ˆç™»å½•åç•™è¨€";
       return;
     }
     let imageUrl = msgImage.value.trim();
@@ -1276,7 +1284,7 @@ async function submitMessage() {
       });
       if (!uploadRes.ok) {
         const data = await uploadRes.json().catch(() => ({}));
-        throw new Error(data.error || "Í¼Æ¬ÉÏ´«Ê§°Ü");
+        throw new Error(data.error || "å›¾ç‰‡ä¸Šä¼ å¤±è´¥");
       }
       const uploadData = await uploadRes.json();
       imageUrl = uploadData.url;
@@ -1289,7 +1297,7 @@ async function submitMessage() {
       isAnonymous: msgAnonymous.checked,
     };
     if (!payload.content) {
-      msgHint.textContent = "ÁôÑÔÄÚÈİ²»ÄÜÎª¿Õ";
+      msgHint.textContent = "ç•™è¨€å†…å®¹ä¸èƒ½ä¸ºç©º";
       return;
     }
     await apiFetch("/messages", {
@@ -1297,7 +1305,7 @@ async function submitMessage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    msgHint.textContent = "ÒÑÌá½»£¬µÈ´ı¹ÜÀíÔ±ÉóºË";
+    msgHint.textContent = "å·²æäº¤ï¼Œç­‰å¾…ç®¡ç†å‘˜å®¡æ ¸";
     msgContent.value = "";
     msgImage.value = "";
     msgImageFile.value = "";
@@ -1546,7 +1554,7 @@ if (toggleMessages && messagePanel) {
     const isCollapsed = messagePanel.classList.contains("collapsed");
     messagePanel.classList.toggle("collapsed", !isCollapsed);
     messagePanel.classList.toggle("expanded", isCollapsed);
-    toggleMessages.textContent = isCollapsed ? "ÊÕÆğÁôÑÔÇø" : "Õ¹¿ªÁôÑÔÇø";
+    toggleMessages.textContent = isCollapsed ? "æ”¶èµ·ç•™è¨€åŒº" : "å±•å¼€ç•™è¨€åŒº";
   });
 }
 
@@ -1555,7 +1563,7 @@ if (toggleStudents && studentPanel) {
     const isCollapsed = studentPanel.classList.contains("collapsed");
     studentPanel.classList.toggle("collapsed", !isCollapsed);
     studentPanel.classList.toggle("expanded", isCollapsed);
-    toggleStudents.textContent = isCollapsed ? "ÊÕÆğÑ§ÉúÁĞ±í" : "Õ¹¿ªÑ§ÉúÁĞ±í";
+    toggleStudents.textContent = isCollapsed ? "æ”¶èµ·å­¦ç”Ÿåˆ—è¡¨" : "å±•å¼€å­¦ç”Ÿåˆ—è¡¨";
   });
 }
 
@@ -1569,10 +1577,10 @@ function bindToggle(btn, panel, expandedText, collapsedText) {
   });
 }
 
-bindToggle(togglePosts, postsPanel, "ÊÕÆğ°à¼¶¶¯Ì¬", "Õ¹¿ª°à¼¶¶¯Ì¬");
-bindToggle(toggleEvents, eventsPanel, "ÊÕÆğ»î¶¯»Ø¹Ë", "Õ¹¿ª»î¶¯»Ø¹Ë");
-bindToggle(toggleTimeline, timelinePanel, "ÊÕÆğÊ±¼äÖá", "Õ¹¿ªÊ±¼äÖá");
-bindToggle(toggleAlbums, albumsPanel, "ÊÕÆğÏà²áÇ½", "Õ¹¿ªÏà²áÇ½");
+bindToggle(togglePosts, postsPanel, "æ”¶èµ·ç­çº§åŠ¨æ€", "å±•å¼€ç­çº§åŠ¨æ€");
+bindToggle(toggleEvents, eventsPanel, "æ”¶èµ·æ´»åŠ¨å›é¡¾", "å±•å¼€æ´»åŠ¨å›é¡¾");
+bindToggle(toggleTimeline, timelinePanel, "æ”¶èµ·æ—¶é—´è½´", "å±•å¼€æ—¶é—´è½´");
+bindToggle(toggleAlbums, albumsPanel, "æ”¶èµ·ç›¸å†Œå¢™", "å±•å¼€ç›¸å†Œå¢™");
 
 if (openAuth) openAuth.addEventListener("click", openModal);
 if (closeAuth) closeAuth.addEventListener("click", closeModal);
@@ -1585,7 +1593,7 @@ if (logoutBtn) logoutBtn.addEventListener("click", () => {
 });
 if (openNotifications) openNotifications.addEventListener("click", () => {
   if (!state.token) {
-    showToast("ÌáÊ¾", "ÇëÏÈµÇÂ¼ºó²é¿´ÏûÏ¢");
+    showToast("æç¤º", "è¯·å…ˆç™»å½•åæŸ¥çœ‹æ¶ˆæ¯");
     return;
   }
   openNotificationModal();
@@ -1717,19 +1725,19 @@ async function init() {
     document.body.classList.remove("constellation-lock");
     pageStack.classList.remove("hidden");
   }
-  setStatus(TEXT.loading);
+  setStatus("\u52a0\u8f7d\u4e2d...");
   let attempts = 0;
   let ready = false;
   while (!ready && attempts < 6) {
     attempts += 1;
-    showServerGate(`ÕıÔÚÁ¬½Óºó¶Ë¡­µÚ ${attempts} ´Î`);
+    showServerGate(`æ­£åœ¨è¿æ¥åç«¯â€¦ç¬¬ ${attempts} æ¬¡`);
     try {
       await loadContent();
       await loadData();
       await loadMessages();
       ready = true;
     } catch (err) {
-      showServerGate("·şÎñÆ÷ÕıÔÚÆô¶¯£¬ÇëÉÔµÈ...");
+      showServerGate("æœåŠ¡å™¨æ­£åœ¨å¯åŠ¨ï¼Œè¯·ç¨ç­‰...");
       await new Promise((r) => setTimeout(r, 4000));
     }
   }
@@ -1738,7 +1746,7 @@ async function init() {
     loginToken.value = state.token;
     await loginWithToken(state.token);
   } else {
-    setStatus(TEXT.loginHint);
+    setStatus("\u8bf7\u767b\u5f55\u540e\u7f16\u8f91\u81ea\u5df1\u7684\u661f\u5149\u8d44\u6599");
   }
   updateAuthUI();
   if (state.token && !notificationTimer) {
@@ -1778,8 +1786,6 @@ const observer = new IntersectionObserver(
 );
 
 revealTargets.forEach((el) => observer.observe(el));
-
-
 
 
 
